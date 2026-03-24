@@ -13,6 +13,7 @@ import {
 import { useLocale } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { getGridPresetLongEdge, resolveAspectRatioGridSize } from "@/lib/editor/grid-size";
 import { GRID_PRESETS } from "@/lib/constants";
 import { PALETTE_PRESET_OPTIONS } from "@/lib/palette";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,25 @@ export function EditorSidebar({
   const copy = messages.editor.sidebar;
   const selectedPaletteColor =
     palette.find((color) => color.hex === selectedColor) ?? palette[0] ?? null;
+  const activePresetPreview = sourceImage
+    ? resolveAspectRatioGridSize(
+        sourceImage.width,
+        sourceImage.height,
+        getGridPresetLongEdge(targetSize),
+      )
+    : null;
+  const previewGridSizes = sourceImage
+    ? new Map(
+        GRID_PRESETS.map((preset) => [
+          preset.id,
+          resolveAspectRatioGridSize(
+            sourceImage.width,
+            sourceImage.height,
+            getGridPresetLongEdge(preset),
+          ),
+        ]),
+      )
+    : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-auto pb-2">
@@ -104,8 +124,8 @@ export function EditorSidebar({
                     <p className="mt-2">{copy.original(sourceImage.width, sourceImage.height)}</p>
                     <p className="mt-1">
                       {copy.currentGrid(
-                        grid?.width ?? targetSize.width,
-                        grid?.height ?? targetSize.height,
+                        grid?.width ?? activePresetPreview?.width ?? targetSize.width,
+                        grid?.height ?? activePresetPreview?.height ?? targetSize.height,
                       )}
                     </p>
                   </>
@@ -179,9 +199,13 @@ export function EditorSidebar({
                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900",
                   )}
                 >
-                  <p className="font-medium">{preset.label}</p>
+                  <p className="font-medium">
+                    {sourceImage ? `Long edge ${getGridPresetLongEdge(preset)}` : preset.label}
+                  </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
-                    {copy.presetSuffix}
+                    {sourceImage
+                      ? `${previewGridSizes?.get(preset.id)?.width ?? preset.width} x ${previewGridSizes?.get(preset.id)?.height ?? preset.height}`
+                      : copy.presetSuffix}
                   </p>
                 </button>
               ))}

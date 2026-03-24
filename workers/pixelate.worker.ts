@@ -1,4 +1,5 @@
 import { BACKGROUND_COLOR_KEYS } from "@/lib/constants";
+import { resolveAspectRatioGridSize } from "@/lib/editor/grid-size";
 import type { PaletteColor } from "@/types/editor";
 import type { PixelWorkerRequest, PixelWorkerResponse } from "@/types/worker";
 
@@ -66,20 +67,6 @@ function compositeAlpha(
     r: Math.round(background.r + (r - background.r) * opacity),
     g: Math.round(background.g + (g - background.g) * opacity),
     b: Math.round(background.b + (b - background.b) * opacity),
-  };
-}
-
-function resolveTargetDimensions(sourceWidth: number, sourceHeight: number, granularity: number) {
-  if (sourceWidth >= sourceHeight) {
-    return {
-      width: granularity,
-      height: Math.max(1, Math.round((sourceHeight / sourceWidth) * granularity)),
-    };
-  }
-
-  return {
-    width: Math.max(1, Math.round((sourceWidth / sourceHeight) * granularity)),
-    height: granularity,
   };
 }
 
@@ -382,7 +369,7 @@ function pixelate(request: PixelWorkerRequest): PixelWorkerResponse {
   }
 
   const granularity = Math.max(target.width, target.height);
-  const resolvedTarget = resolveTargetDimensions(
+  const resolvedTarget = resolveAspectRatioGridSize(
     source.width,
     source.height,
     granularity,
