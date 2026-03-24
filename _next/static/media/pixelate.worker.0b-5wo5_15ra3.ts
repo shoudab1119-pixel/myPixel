@@ -1,4 +1,5 @@
 import { BACKGROUND_COLOR_KEYS } from "@/lib/constants";
+import { resolveAspectRatioGridSize } from "@/lib/editor/grid-size";
 import type { PaletteColor } from "@/types/editor";
 import type { PixelWorkerRequest, PixelWorkerResponse } from "@/types/worker";
 
@@ -9,6 +10,8 @@ const workerScope = globalThis as typeof globalThis & {
 
 const OPAQUE_ALPHA_THRESHOLD = 220;
 const REGION_SIMILARITY_THRESHOLD = 26 * 26 * 3;
+const LARGE_REGION_SIZE = 10;
+const DOMINANT_REGION_RATIO = 0.58;
 
 interface RGBColor {
   r: number;
@@ -64,20 +67,6 @@ function compositeAlpha(
     r: Math.round(background.r + (r - background.r) * opacity),
     g: Math.round(background.g + (g - background.g) * opacity),
     b: Math.round(background.b + (b - background.b) * opacity),
-  };
-}
-
-function resolveTargetDimensions(sourceWidth: number, sourceHeight: number, granularity: number) {
-  if (sourceWidth >= sourceHeight) {
-    return {
-      width: granularity,
-      height: Math.max(1, Math.round((sourceHeight / sourceWidth) * granularity)),
-    };
-  }
-
-  return {
-    width: Math.max(1, Math.round((sourceWidth / sourceHeight) * granularity)),
-    height: granularity,
   };
 }
 
@@ -303,6 +292,14 @@ function mergeSimilarRegions(
       }
     }
 
+    const dominantRatio = dominantCount / Math.max(1, regionIndices.length);
+    if (
+      regionIndices.length >= LARGE_REGION_SIZE &&
+      dominantRatio < DOMINANT_REGION_RATIO
+    ) {
+      continue;
+    }
+
     const dominantCell =
       regionIndices
         .map((regionIndex) => cells[regionIndex])
@@ -372,7 +369,7 @@ function pixelate(request: PixelWorkerRequest): PixelWorkerResponse {
   }
 
   const granularity = Math.max(target.width, target.height);
-  const resolvedTarget = resolveTargetDimensions(
+  const resolvedTarget = resolveAspectRatioGridSize(
     source.width,
     source.height,
     granularity,
