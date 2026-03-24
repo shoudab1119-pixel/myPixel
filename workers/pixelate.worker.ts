@@ -9,6 +9,8 @@ const workerScope = globalThis as typeof globalThis & {
 
 const OPAQUE_ALPHA_THRESHOLD = 220;
 const REGION_SIMILARITY_THRESHOLD = 26 * 26 * 3;
+const LARGE_REGION_SIZE = 10;
+const DOMINANT_REGION_RATIO = 0.58;
 
 interface RGBColor {
   r: number;
@@ -301,6 +303,14 @@ function mergeSimilarRegions(
         dominantKey = key;
         dominantCount = count;
       }
+    }
+
+    const dominantRatio = dominantCount / Math.max(1, regionIndices.length);
+    if (
+      regionIndices.length >= LARGE_REGION_SIZE &&
+      dominantRatio < DOMINANT_REGION_RATIO
+    ) {
+      continue;
     }
 
     const dominantCell =

@@ -418,7 +418,7 @@ export function PixelCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative h-full min-h-0 overflow-hidden overscroll-contain rounded-[32px] border border-slate-200 bg-white shadow-soft"
+      className="relative h-full min-h-0 overflow-hidden overscroll-contain rounded-[38px] border border-slate-200/80 bg-[#eef2f7] shadow-[0_30px_80px_rgba(15,23,42,0.08)]"
     >
       {grid ? (
         <>

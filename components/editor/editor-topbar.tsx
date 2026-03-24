@@ -20,6 +20,7 @@ import { formatDateTime } from "@/lib/utils";
 import type { GridRenderMode } from "@/types/editor";
 
 interface EditorTopbarProps {
+  editorView: "generate" | "edit";
   projectName: string;
   hasSourceImage: boolean;
   dirty: boolean;
@@ -36,10 +37,12 @@ interface EditorTopbarProps {
   onExportStats: () => void;
   onReset: () => void;
   onRegenerate: () => void;
+  onEditorViewChange: (view: "generate" | "edit") => void;
   onRenderModeChange: (renderMode: GridRenderMode) => void;
 }
 
 export function EditorTopbar({
+  editorView,
   projectName,
   hasSourceImage,
   dirty,
@@ -56,10 +59,12 @@ export function EditorTopbar({
   onExportStats,
   onReset,
   onRegenerate,
+  onEditorViewChange,
   onRenderModeChange,
 }: EditorTopbarProps) {
   const { messages } = useLocale();
   const copy = messages.editor.topbar;
+  const viewCopy = messages.editor.sidebar;
   const [draftName, setDraftName] = useState(projectName);
 
   useEffect(() => {
@@ -71,8 +76,8 @@ export function EditorTopbar({
   };
 
   return (
-    <Panel className="flex flex-col gap-4 border-slate-200 bg-white p-4 shadow-soft xl:flex-row xl:items-center xl:justify-between">
-      <div className="min-w-0 flex-1">
+    <Panel className="grid gap-4 border-slate-200/80 bg-white/92 p-4 shadow-soft backdrop-blur xl:grid-cols-[minmax(280px,1fr)_auto_minmax(560px,1fr)] xl:items-center">
+      <div className="min-w-0">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <input
             value={draftName}
@@ -98,7 +103,36 @@ export function EditorTopbar({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex justify-center xl:justify-center">
+        <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50/90 p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => onEditorViewChange("generate")}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
+              editorView === "generate"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800",
+            )}
+          >
+            {viewCopy.generateTab}
+          </button>
+          <button
+            type="button"
+            onClick={() => onEditorViewChange("edit")}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
+              editorView === "edit"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800",
+            )}
+          >
+            {viewCopy.editTab}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-start gap-3 xl:justify-end">
         <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
           <button
             type="button"

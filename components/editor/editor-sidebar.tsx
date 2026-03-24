@@ -44,7 +44,6 @@ interface EditorSidebarProps {
   usedPaletteEntries: UsedPaletteEntry[];
   showGrid: boolean;
   isPixelating: boolean;
-  onEditorViewChange: (view: EditorView) => void;
   onUpload: () => void;
   onRegenerate: () => void;
   onRemoveNoise: () => void;
@@ -66,7 +65,6 @@ export function EditorSidebar({
   usedPaletteEntries,
   showGrid,
   isPixelating,
-  onEditorViewChange,
   onUpload,
   onRegenerate,
   onRemoveNoise,
@@ -82,36 +80,7 @@ export function EditorSidebar({
     palette.find((color) => color.hex === selectedColor) ?? palette[0] ?? null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <div className="flex justify-end">
-        <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-          <button
-            type="button"
-            onClick={() => onEditorViewChange("generate")}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
-              editorView === "generate"
-                ? "bg-slate-900 text-white"
-                : "text-slate-500 hover:text-slate-800",
-            )}
-          >
-            {copy.generateTab}
-          </button>
-          <button
-            type="button"
-            onClick={() => onEditorViewChange("edit")}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
-              editorView === "edit"
-                ? "bg-slate-900 text-white"
-                : "text-slate-500 hover:text-slate-800",
-            )}
-          >
-            {copy.editTab}
-          </button>
-        </div>
-      </div>
-
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-auto pb-2">
       {editorView === "generate" ? (
         <>
           <Panel className="border-slate-200 bg-white p-5 shadow-soft">

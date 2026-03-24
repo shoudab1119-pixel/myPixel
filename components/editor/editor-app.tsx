@@ -657,8 +657,9 @@ export function EditorApp() {
         }}
       />
 
-      <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-4 bg-[#f3efe7] px-4 py-4 xl:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-5 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-4 py-4 xl:px-6">
         <EditorTopbar
+          editorView={editorView}
           projectName={projectName}
           hasSourceImage={Boolean(sourceImage)}
           dirty={dirty}
@@ -675,6 +676,7 @@ export function EditorApp() {
           onExportStats={() => void handleExportStats()}
           onReset={resetToOriginal}
           onRegenerate={() => void handleRegenerate()}
+          onEditorViewChange={setEditorView}
           onRenderModeChange={handleRenderModeChange}
         />
 
@@ -684,43 +686,87 @@ export function EditorApp() {
           </Panel>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[96px_minmax(0,1fr)_320px] xl:items-start">
-          <EditorToolbar
-            selectedTool={selectedTool}
-            canUndo={history.past.length > 0}
-            canRedo={history.future.length > 0}
-            editingEnabled={editorView === "edit"}
-            onSelectTool={setSelectedTool}
-            onUndo={undo}
-            onRedo={redo}
-          />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+          <div className="flex min-h-[640px] flex-col gap-4 xl:relative xl:min-h-[calc(100vh-190px)]">
+            <div className="xl:hidden">
+              <EditorToolbar
+                selectedTool={selectedTool}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+                editingEnabled={editorView === "edit"}
+                onSelectTool={setSelectedTool}
+                onUndo={undo}
+                onRedo={redo}
+              />
+            </div>
 
-          <div className="flex h-[min(72vh,900px)] min-h-[560px] flex-col gap-4">
-            <PixelCanvas
-              fitSignal={fitSignal}
-              isPixelating={processing.isPixelating}
-              editingEnabled={editorView === "edit"}
-              onUploadRequest={openFilePicker}
-            />
-            <CanvasControls
-              zoom={viewport.zoom}
-              onZoomChange={handleZoomChange}
-              onFit={handleFitView}
-            />
-            <Panel className="flex flex-wrap items-center justify-between gap-3 border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-soft">
-              <p>{summary}</p>
-              <div className="flex items-center gap-3">
-                <span>
-                  {copy.selectedColor}: {selectedColor}
-                </span>
-                <span>
-                  {copy.tool}: {toolLabel}
-                </span>
-              </div>
-            </Panel>
+            <div className="hidden xl:absolute xl:left-6 xl:top-6 xl:z-10 xl:block xl:w-[92px]">
+              <EditorToolbar
+                selectedTool={selectedTool}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+                editingEnabled={editorView === "edit"}
+                onSelectTool={setSelectedTool}
+                onUndo={undo}
+                onRedo={redo}
+              />
+            </div>
+
+            <div className="h-[min(76vh,940px)] min-h-[560px] xl:h-full">
+              <PixelCanvas
+                fitSignal={fitSignal}
+                isPixelating={processing.isPixelating}
+                editingEnabled={editorView === "edit"}
+                onUploadRequest={openFilePicker}
+              />
+            </div>
+
+            <div className="xl:hidden">
+              <CanvasControls
+                zoom={viewport.zoom}
+                onZoomChange={handleZoomChange}
+                onFit={handleFitView}
+              />
+            </div>
+
+            <div className="xl:hidden">
+              <Panel className="flex flex-wrap items-center justify-between gap-3 border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-soft">
+                <p>{summary}</p>
+                <div className="flex items-center gap-3">
+                  <span>
+                    {copy.selectedColor}: {selectedColor}
+                  </span>
+                  <span>
+                    {copy.tool}: {toolLabel}
+                  </span>
+                </div>
+              </Panel>
+            </div>
+
+            <div className="hidden xl:absolute xl:right-6 xl:top-6 xl:z-10 xl:block xl:max-w-[320px]">
+              <Panel className="border-slate-200/80 bg-white/90 px-4 py-3 text-sm text-slate-600 shadow-soft backdrop-blur">
+                <p className="font-medium text-slate-900">{summary}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.14em] text-slate-400">
+                  <span>
+                    {copy.selectedColor}: {selectedColor}
+                  </span>
+                  <span>
+                    {copy.tool}: {toolLabel}
+                  </span>
+                </div>
+              </Panel>
+            </div>
+
+            <div className="hidden xl:absolute xl:bottom-6 xl:left-1/2 xl:z-10 xl:block xl:w-[min(460px,calc(100%-170px))] xl:-translate-x-1/2">
+              <CanvasControls
+                zoom={viewport.zoom}
+                onZoomChange={handleZoomChange}
+                onFit={handleFitView}
+              />
+            </div>
           </div>
 
-          <div className="pr-1">
+          <div className="pr-1 xl:sticky xl:top-[96px] xl:h-[calc(100vh-140px)]">
             <EditorSidebar
               editorView={editorView}
               grid={grid}
@@ -732,7 +778,6 @@ export function EditorApp() {
               usedPaletteEntries={usedPaletteEntries}
               showGrid={viewport.showGrid}
               isPixelating={processing.isPixelating || processing.isLoadingProject}
-              onEditorViewChange={setEditorView}
               onUpload={openFilePicker}
               onRegenerate={() => void handleRegenerate()}
               onRemoveNoise={handleRemoveNoise}

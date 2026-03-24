@@ -31,6 +31,56 @@ export function getRenderedCellSize(zoom: number) {
   return BASE_CANVAS_CELL_SIZE * zoom;
 }
 
+function drawCanvasBackdrop(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+) {
+  context.fillStyle = "#edf2f7";
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "rgba(148, 163, 184, 0.18)";
+  const step = 24;
+
+  for (let y = 10; y < height; y += step) {
+    for (let x = 10; x < width; x += step) {
+      context.fillRect(x, y, 2, 2);
+    }
+  }
+}
+
+function drawArtboard(
+  context: CanvasRenderingContext2D,
+  offsetX: number,
+  offsetY: number,
+  contentWidth: number,
+  contentHeight: number,
+) {
+  const padding = 28;
+
+  context.save();
+  context.shadowColor = "rgba(15, 23, 42, 0.1)";
+  context.shadowBlur = 30;
+  context.shadowOffsetY = 18;
+  context.fillStyle = "rgba(255,255,255,0.97)";
+  context.fillRect(
+    offsetX - padding,
+    offsetY - padding,
+    contentWidth + padding * 2,
+    contentHeight + padding * 2,
+  );
+  context.restore();
+
+  context.strokeStyle = "rgba(203, 213, 225, 0.8)";
+  context.lineWidth = 1;
+  context.strokeRect(
+    offsetX - padding,
+    offsetY - padding,
+    contentWidth + padding * 2,
+    contentHeight + padding * 2,
+  );
+}
+
 function shouldShowCoordinateGuides(grid: PixelGrid) {
   return Math.max(grid.width, grid.height) >= LARGE_GRID_GUIDE_THRESHOLD;
 }
@@ -169,20 +219,15 @@ export function renderPixelGrid({
   context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   context.imageSmoothingEnabled = false;
   context.clearRect(0, 0, width, height);
-  context.fillStyle = DEFAULT_CANVAS_BACKGROUND;
-  context.fillRect(0, 0, width, height);
+  drawCanvasBackdrop(context, width, height);
 
   const cellSize = getRenderedCellSize(viewport.zoom);
   const contentWidth = grid.width * cellSize;
   const contentHeight = grid.height * cellSize;
 
-  context.fillStyle = "rgba(255,255,255,0.03)";
-  context.fillRect(
-    viewport.offsetX - 12,
-    viewport.offsetY - 12,
-    contentWidth + 24,
-    contentHeight + 24,
-  );
+  drawArtboard(context, viewport.offsetX, viewport.offsetY, contentWidth, contentHeight);
+  context.fillStyle = DEFAULT_CANVAS_BACKGROUND;
+  context.fillRect(viewport.offsetX, viewport.offsetY, contentWidth, contentHeight);
 
   for (let y = 0; y < grid.height; y += 1) {
     for (let x = 0; x < grid.width; x += 1) {

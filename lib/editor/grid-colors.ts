@@ -10,6 +10,11 @@ interface NeighborReplacementResult {
   changedCount: number;
 }
 
+interface ComponentInfo {
+  indices: number[];
+  boundaryCounts: Map<string, number>;
+}
+
 function getPaletteKey(color: PaletteColor) {
   return color.code ?? color.name;
 }
@@ -215,6 +220,66 @@ function getNeighborIndices(index: number, width: number, height: number) {
   return neighbors;
 }
 
+function collectConnectedComponent(
+  grid: PixelGrid,
+  startIndex: number,
+  visited: boolean[],
+): ComponentInfo {
+  const key = grid.cellKeys[startIndex];
+  const queue = [startIndex];
+  const indices: number[] = [];
+  const boundaryCounts = new Map<string, number>();
+  visited[startIndex] = true;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) {
+      continue;
+    }
+
+    indices.push(current);
+
+    for (const neighborIndex of getNeighborIndices(current, grid.width, grid.height)) {
+      if (grid.externalMask[neighborIndex]) {
+        continue;
+      }
+
+      const neighborKey = grid.cellKeys[neighborIndex];
+      if (neighborKey === key) {
+        if (!visited[neighborIndex]) {
+          visited[neighborIndex] = true;
+          queue.push(neighborIndex);
+        }
+        continue;
+      }
+
+      boundaryCounts.set(neighborKey, (boundaryCounts.get(neighborKey) ?? 0) + 1);
+    }
+  }
+
+  return {
+    indices,
+    boundaryCounts,
+  };
+}
+
+function getDominantBoundaryKey(boundaryCounts: Map<string, number>) {
+  let winner: string | null = null;
+  let winnerCount = 0;
+
+  for (const [key, count] of boundaryCounts.entries()) {
+    if (count > winnerCount) {
+      winner = key;
+      winnerCount = count;
+    }
+  }
+
+  return {
+    key: winner,
+    count: winnerCount,
+  };
+}
+
 function getDominantNeighborKey(
   grid: PixelGrid,
   index: number,
@@ -281,55 +346,44 @@ export function removeNoiseFromGrid(
   palette: PaletteColor[],
 ): NeighborReplacementResult {
   const { byKey } = createPaletteMaps(palette);
-  let nextGrid = {
-    ...grid,
-    cells: [...grid.cells],
-    cellKeys: [...grid.cellKeys],
-  };
+  const nextCells = [...grid.cells];
+  const nextCellKeys = [...grid.cellKeys];
+  const visited = new Array<boolean>(grid.cells.length).fill(false);
   let changedCount = 0;
 
-  for (let pass = 0; pass < 2; pass += 1) {
-    const passCells = [...nextGrid.cells];
-    const passKeys = [...nextGrid.cellKeys];
-
-    for (let index = 0; index < nextGrid.cells.length; index += 1) {
-      if (nextGrid.externalMask[index]) {
-        continue;
-      }
-
-      const currentKey = nextGrid.cellKeys[index];
-      const neighbor = getDominantNeighborKey(nextGrid, index, new Set([currentKey]));
-      if (!neighbor.key || neighbor.count < 5) {
-        continue;
-      }
-
-      const selfSupport = getNeighborIndices(index, nextGrid.width, nextGrid.height).filter(
-        (neighborIndex) =>
-          !nextGrid.externalMask[neighborIndex] &&
-          nextGrid.cellKeys[neighborIndex] === currentKey,
-      ).length;
-
-      if (selfSupport >= 2) {
-        continue;
-      }
-
-      const winner = byKey.get(neighbor.key);
-      if (!winner) {
-        continue;
-      }
-
-      if (passKeys[index] !== neighbor.key) {
-        passKeys[index] = neighbor.key;
-        passCells[index] = winner.hex;
-        changedCount += 1;
-      }
+  for (let index = 0; index < grid.cells.length; index += 1) {
+    if (grid.externalMask[index] || visited[index]) {
+      continue;
     }
 
-    nextGrid = createNextGrid(nextGrid, passCells, passKeys);
+    const component = collectConnectedComponent(grid, index, visited);
+    if (component.indices.length > 3) {
+      continue;
+    }
+
+    const winner = getDominantBoundaryKey(component.boundaryCounts);
+    if (!winner.key || winner.count < Math.max(3, component.indices.length * 2)) {
+      continue;
+    }
+
+    const paletteColor = byKey.get(winner.key);
+    if (!paletteColor) {
+      continue;
+    }
+
+    for (const componentIndex of component.indices) {
+      if (nextCellKeys[componentIndex] === winner.key) {
+        continue;
+      }
+
+      nextCellKeys[componentIndex] = winner.key;
+      nextCells[componentIndex] = paletteColor.hex;
+      changedCount += 1;
+    }
   }
 
   return {
-    grid: nextGrid,
+    grid: createNextGrid(grid, nextCells, nextCellKeys),
     changedCount,
   };
 }

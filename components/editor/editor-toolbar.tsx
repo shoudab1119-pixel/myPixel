@@ -51,7 +51,7 @@ export function EditorToolbar({
   ];
 
   return (
-    <Panel className="flex h-full flex-col gap-3 border-slate-200 bg-white p-3 shadow-soft">
+    <Panel className="flex h-full flex-col gap-3 border-slate-200/80 bg-white/92 p-3 shadow-soft backdrop-blur">
       {tools.map((tool) => (
         <button
           key={tool.id}
@@ -59,10 +59,10 @@ export function EditorToolbar({
           onClick={() => onSelectTool(tool.id)}
           disabled={!editingEnabled && tool.id !== "hand"}
           className={cn(
-            "group flex flex-col items-center gap-2 rounded-[22px] border px-3 py-4 text-center transition disabled:cursor-not-allowed",
+            "group flex flex-col items-center gap-2 rounded-[20px] border px-2.5 py-3.5 text-center transition disabled:cursor-not-allowed",
             selectedTool === tool.id
-              ? "border-emerald-300 bg-emerald-50 text-slate-900"
-              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700",
+              ? "border-blue-300 bg-blue-50 text-slate-900"
+              : "border-slate-200 bg-slate-50/90 text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700",
             !editingEnabled && tool.id !== "hand" ? "opacity-45" : "",
           )}
         >
