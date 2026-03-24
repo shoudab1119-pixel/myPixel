@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Grid3x3, Tag } from "lucide-react";
-import { Download, FolderOpen, RotateCcw, Save, Upload } from "lucide-react";
+import {
+  Download,
+  FolderOpen,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Upload,
+} from "lucide-react";
 
 import { useLocale } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
@@ -13,6 +20,7 @@ import type { GridRenderMode } from "@/types/editor";
 
 interface EditorTopbarProps {
   projectName: string;
+  hasSourceImage: boolean;
   dirty: boolean;
   isPixelating: boolean;
   isSaving: boolean;
@@ -25,11 +33,13 @@ interface EditorTopbarProps {
   onSave: () => void;
   onExport: () => void;
   onReset: () => void;
+  onRegenerate: () => void;
   onRenderModeChange: (renderMode: GridRenderMode) => void;
 }
 
 export function EditorTopbar({
   projectName,
+  hasSourceImage,
   dirty,
   isPixelating,
   isSaving,
@@ -42,6 +52,7 @@ export function EditorTopbar({
   onSave,
   onExport,
   onReset,
+  onRegenerate,
   onRenderModeChange,
 }: EditorTopbarProps) {
   const { messages } = useLocale();
@@ -116,7 +127,15 @@ export function EditorTopbar({
           </button>
         </div>
         <Button variant="secondary" onClick={onUpload} icon={<Upload className="h-4 w-4" />}>
-          {copy.upload}
+          {hasSourceImage ? copy.replaceImage : copy.upload}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={onRegenerate}
+          disabled={!hasSourceImage || isPixelating}
+          icon={<RefreshCw className="h-4 w-4" />}
+        >
+          {copy.regenerate}
         </Button>
         <Button
           variant="secondary"

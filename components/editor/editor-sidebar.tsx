@@ -93,7 +93,7 @@ export function EditorSidebar({
               onClick={onUpload}
               icon={<ImagePlus className="h-4 w-4" />}
             >
-              {copy.uploadImage}
+              {sourceImage ? copy.replaceImage : copy.uploadImage}
             </Button>
             <Button
               variant="secondary"

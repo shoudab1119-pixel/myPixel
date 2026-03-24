@@ -43,6 +43,28 @@ function stripExtension(filename: string) {
   return base || DEFAULT_PROJECT_NAME;
 }
 
+function resolveProjectNameForSourceChange(
+  currentProjectName: string,
+  currentSourceImage: SourceImageAsset | null,
+  nextFilename: string,
+) {
+  const nextBaseName = stripExtension(nextFilename);
+  const trimmedCurrentName = currentProjectName.trim();
+
+  if (!trimmedCurrentName || trimmedCurrentName === DEFAULT_PROJECT_NAME) {
+    return nextBaseName;
+  }
+
+  if (
+    currentSourceImage &&
+    trimmedCurrentName === stripExtension(currentSourceImage.name)
+  ) {
+    return nextBaseName;
+  }
+
+  return trimmedCurrentName;
+}
+
 export function EditorApp() {
   const { messages } = useLocale();
   const copy = messages.editor.app;
@@ -278,6 +300,17 @@ export function EditorApp() {
     void openProject(projectParam);
   }, [openProject, searchParams]);
 
+  const openFilePicker = useCallback(() => {
+    const input = fileInputRef.current;
+
+    if (!input) {
+      return;
+    }
+
+    input.value = "";
+    input.click();
+  }, []);
+
   const handleFiles = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file) {
@@ -285,15 +318,31 @@ export function EditorApp() {
     }
 
     try {
+      setProcessing({
+        isPixelating: true,
+        error: null,
+        status: copy.reloadingSource,
+      });
+
       const raster = await rasterizeFile(file);
       await processRaster(raster.asset, raster.pixels, targetSize, {
-        projectId: null,
-        projectName: stripExtension(file.name),
+        projectId: sourceImage ? projectId : null,
+        projectName: resolveProjectNameForSourceChange(
+          projectName,
+          sourceImage,
+          file.name,
+        ),
         palettePresetId,
         palette,
       });
-      router.replace("/editor");
-      lastLoadedProjectRef.current = null;
+
+      if (projectId) {
+        router.replace(`/editor?project=${projectId}`);
+        lastLoadedProjectRef.current = projectId;
+      } else {
+        router.replace("/editor");
+        lastLoadedProjectRef.current = null;
+      }
     } catch (reason) {
       setProcessing({
         isPixelating: false,
@@ -316,14 +365,28 @@ export function EditorApp() {
         return;
       }
 
-      const nextPalettePreset = getPalettePreset(nextPalettePresetId);
-      const raster = await rasterizeAsset(sourceImage);
-      await processRaster(raster.asset, raster.pixels, preset, {
-        projectId,
-        projectName,
-        palettePresetId: nextPalettePreset.id,
-        palette: nextPalettePreset.colors,
-      });
+      try {
+        setProcessing({
+          isPixelating: true,
+          error: null,
+          status: copy.reloadingSource,
+        });
+
+        const nextPalettePreset = getPalettePreset(nextPalettePresetId);
+        const raster = await rasterizeAsset(sourceImage);
+        await processRaster(raster.asset, raster.pixels, preset, {
+          projectId,
+          projectName,
+          palettePresetId: nextPalettePreset.id,
+          palette: nextPalettePreset.colors,
+        });
+      } catch (reason) {
+        setProcessing({
+          isPixelating: false,
+          error: reason instanceof Error ? reason.message : copy.unableGenerateGrid,
+          status: null,
+        });
+      }
     },
     [
       copy,
@@ -463,6 +526,7 @@ export function EditorApp() {
       <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-4 px-4 py-4 xl:px-6">
         <EditorTopbar
           projectName={projectName}
+          hasSourceImage={Boolean(sourceImage)}
           dirty={dirty}
           isPixelating={processing.isPixelating || processing.isLoadingProject}
           isSaving={processing.isSavingProject}
@@ -470,11 +534,12 @@ export function EditorApp() {
           lastSavedAt={lastSavedAt}
           renderMode={renderMode}
           onProjectNameChange={setProjectName}
-          onUpload={() => fileInputRef.current?.click()}
+          onUpload={openFilePicker}
           onOpenLibrary={() => setLibraryOpen(true)}
           onSave={() => void handleSave()}
           onExport={() => void handleExport()}
           onReset={resetToOriginal}
+          onRegenerate={() => void handleRegenerate()}
           onRenderModeChange={handleRenderModeChange}
         />
 
@@ -498,7 +563,7 @@ export function EditorApp() {
             <PixelCanvas
               fitSignal={fitSignal}
               isPixelating={processing.isPixelating}
-              onUploadRequest={() => fileInputRef.current?.click()}
+              onUploadRequest={openFilePicker}
             />
             <CanvasControls
               zoom={viewport.zoom}
@@ -527,8 +592,8 @@ export function EditorApp() {
               selectedColor={selectedColor}
               palette={palette}
               showGrid={viewport.showGrid}
-              isPixelating={processing.isPixelating}
-              onUpload={() => fileInputRef.current?.click()}
+              isPixelating={processing.isPixelating || processing.isLoadingProject}
+              onUpload={openFilePicker}
               onRegenerate={() => void handleRegenerate()}
               onSelectPreset={(preset) => {
                 setTargetSize(preset);
