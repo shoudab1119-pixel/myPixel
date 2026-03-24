@@ -147,6 +147,7 @@ const dictionaries = {
         openSaved: "Open Saved",
         reset: "Reset",
         exportPng: "Export PNG",
+        exportStats: "Export Stats",
         saveProject: "Save Project",
       },
       sidebar: {
@@ -176,6 +177,11 @@ const dictionaries = {
         noColorSelected: "No color selected yet.",
         quickSelect: "Quick select",
         openPalettePage: "Open full palette page",
+        filterEyebrow: "Filters",
+        filterTitle: "Exclude colors",
+        filterExcludedCount: (count: number) => `${count} hidden`,
+        filterUsage: (count: number) => `${count} cells`,
+        filterEmpty: "No active colors available yet.",
       },
       controls: {
         zoomLabel: "Zoom",
@@ -189,6 +195,7 @@ const dictionaries = {
         emptyDescription:
           "Upload an image to generate a real pixel grid, then refine it directly on the canvas with brush, eraser, eyedropper, and bucket tools.",
         uploadImage: "Upload image",
+        externalBackground: "External background",
       },
       app: {
         generatingGrid: (label: string) => `Generating ${label} pixel grid...`,
@@ -207,6 +214,7 @@ const dictionaries = {
           renderMode === "coded"
             ? "PNG exported with palette codes."
             : "PNG exported.",
+        statsExported: "Stats PNG exported.",
         exportModePlain: "Export mode switched to plain PNG.",
         exportModeCodes: "Export mode switched to code PNG.",
         unableGenerateGrid: "Unable to generate the pixel grid.",
@@ -214,6 +222,9 @@ const dictionaries = {
         unableOpenProject: "Unable to open the project.",
         unableSaveProject: "Unable to save the project.",
         unableExportPng: "Unable to export the PNG.",
+        unableExportStats: "Unable to export the stats PNG.",
+        excludedColor: (colorKey: string) => `Excluded ${colorKey} and remapped the grid.`,
+        cannotExcludeLastColor: "At least one active color must remain available.",
         noGridLoaded: "No grid loaded",
         summary: (width: number, height: number, colors: number) =>
           `${width} x ${height} · ${colors} colors`,
@@ -405,6 +416,7 @@ const dictionaries = {
         openSaved: "打开已保存",
         reset: "重置",
         exportPng: "导出 PNG",
+        exportStats: "导出统计",
         saveProject: "保存项目",
       },
       sidebar: {
@@ -433,6 +445,11 @@ const dictionaries = {
         noColorSelected: "当前还没有可用颜色。",
         quickSelect: "快速选择",
         openPalettePage: "打开完整色卡页",
+        filterEyebrow: "过滤",
+        filterTitle: "排除颜色",
+        filterExcludedCount: (count: number) => `${count} 个已排除`,
+        filterUsage: (count: number) => `${count} 格`,
+        filterEmpty: "当前还没有可操作的颜色。",
       },
       controls: {
         zoomLabel: "缩放",
@@ -446,6 +463,7 @@ const dictionaries = {
         emptyDescription:
           "先上传图片生成真实像素网格，然后在画布中继续使用画笔、橡皮、吸管和油漆桶逐格编辑。",
         uploadImage: "上传图片",
+        externalBackground: "外部背景",
       },
       app: {
         generatingGrid: (label: string) => `正在生成 ${label} 像素网格...`,
@@ -462,6 +480,7 @@ const dictionaries = {
         generateBeforeExport: "请先生成网格再导出 PNG。",
         pngExported: (renderMode: "plain" | "coded") =>
           renderMode === "coded" ? "已导出带色号 PNG。" : "已导出 PNG。",
+        statsExported: "已导出颜色统计 PNG。",
         exportModePlain: "已切换为普通 PNG 导出模式。",
         exportModeCodes: "已切换为色号 PNG 导出模式。",
         unableGenerateGrid: "无法生成像素网格。",
@@ -469,6 +488,9 @@ const dictionaries = {
         unableOpenProject: "无法打开项目。",
         unableSaveProject: "无法保存项目。",
         unableExportPng: "无法导出 PNG。",
+        unableExportStats: "无法导出统计 PNG。",
+        excludedColor: (colorKey: string) => `已排除 ${colorKey} 并完成重映射。`,
+        cannotExcludeLastColor: "至少需要保留一种可用颜色。",
         noGridLoaded: "尚未加载网格",
         summary: (width: number, height: number, colors: number) =>
           `${width} x ${height} · ${colors} 种颜色`,

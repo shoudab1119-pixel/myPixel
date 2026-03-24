@@ -12,10 +12,20 @@ import { EditorToolbar } from "@/components/editor/editor-toolbar";
 import { EditorTopbar } from "@/components/editor/editor-topbar";
 import { PixelCanvas } from "@/components/editor/pixel-canvas";
 import { ProjectLibraryDialog } from "@/components/editor/project-library-dialog";
+import {
+  createPaletteMaps,
+  getInitialPresentColorKeys,
+  getGridColorUsage,
+  remapExcludedColorKey,
+} from "@/lib/editor/grid-colors";
 import { zoomViewportAtPoint } from "@/lib/editor/render";
 import { Panel } from "@/components/ui/panel";
 import { DEFAULT_PROJECT_NAME } from "@/lib/constants";
-import { createGridThumbnail, exportGridToBlob } from "@/lib/export/grid-export";
+import {
+  createGridThumbnail,
+  exportGridStatsToBlob,
+  exportGridToBlob,
+} from "@/lib/export/grid-export";
 import { rasterizeAsset, rasterizeFile } from "@/lib/image/source-image";
 import { getPalettePreset } from "@/lib/palette";
 import {
@@ -85,6 +95,7 @@ export function EditorApp() {
     targetSize,
     palettePresetId,
     palette,
+    excludedColorKeys,
     viewport,
     selectedColor,
     selectedTool,
@@ -97,6 +108,7 @@ export function EditorApp() {
     setProjectName,
     setTargetSize,
     setPalettePresetId,
+    setExcludedColorKeys,
     setSelectedColor,
     setSelectedTool,
     setRenderMode,
@@ -118,6 +130,7 @@ export function EditorApp() {
       targetSize: state.targetSize,
       palettePresetId: state.palettePresetId,
       palette: state.palette,
+      excludedColorKeys: state.excludedColorKeys,
       viewport: state.viewport,
       selectedColor: state.selectedColor,
       selectedTool: state.selectedTool,
@@ -130,6 +143,7 @@ export function EditorApp() {
       setProjectName: state.setProjectName,
       setTargetSize: state.setTargetSize,
       setPalettePresetId: state.setPalettePresetId,
+      setExcludedColorKeys: state.setExcludedColorKeys,
       setSelectedColor: state.setSelectedColor,
       setSelectedTool: state.setSelectedTool,
       setRenderMode: state.setRenderMode,
@@ -175,6 +189,7 @@ export function EditorApp() {
         projectName?: string;
         palette?: PaletteColor[];
         palettePresetId?: PalettePresetId;
+        excludedColorKeys?: string[];
       },
     ) => {
       const nextPalettePreset = getPalettePreset(
@@ -207,6 +222,7 @@ export function EditorApp() {
             },
             palette: nextPalette,
             backgroundHex: nextPalettePreset.backgroundHex,
+            excludedColorKeys: options?.excludedColorKeys ?? excludedColorKeys,
           },
         };
 
@@ -226,6 +242,7 @@ export function EditorApp() {
           sourceImage: asset,
           palette: nextPalette,
           targetSize: nextTargetSize,
+          excludedColorKeys: options?.excludedColorKeys ?? excludedColorKeys,
           projectId: options?.projectId ?? null,
           projectName: options?.projectName ?? stripExtension(asset.name),
           dirty: true,
@@ -257,7 +274,14 @@ export function EditorApp() {
         });
       }
     },
-    [copy, initializeProject, palettePresetId, pixelate, setProcessing],
+    [
+      copy,
+      excludedColorKeys,
+      initializeProject,
+      palettePresetId,
+      pixelate,
+      setProcessing,
+    ],
   );
 
   const openProject = useCallback(
@@ -338,6 +362,7 @@ export function EditorApp() {
         ),
         palettePresetId,
         palette,
+        excludedColorKeys,
       });
 
       if (projectId) {
@@ -360,6 +385,7 @@ export function EditorApp() {
     async (
       preset = targetSize,
       nextPalettePresetId: PalettePresetId = palettePresetId,
+      nextExcludedColorKeys: string[] = excludedColorKeys,
     ) => {
       if (!sourceImage) {
         setProcessing({
@@ -383,6 +409,7 @@ export function EditorApp() {
           projectName,
           palettePresetId: nextPalettePreset.id,
           palette: nextPalettePreset.colors,
+          excludedColorKeys: nextExcludedColorKeys,
         });
       } catch (reason) {
         setProcessing({
@@ -394,6 +421,7 @@ export function EditorApp() {
     },
     [
       copy,
+      excludedColorKeys,
       palettePresetId,
       processRaster,
       projectId,
@@ -468,6 +496,34 @@ export function EditorApp() {
     }
   }, [copy, grid, palette, projectName, renderMode, setProcessing]);
 
+  const handleExportStats = useCallback(async () => {
+    if (!grid) {
+      setProcessing({
+        error: copy.generateBeforeExport,
+        status: null,
+      });
+      return;
+    }
+
+    try {
+      const blob = await exportGridStatsToBlob(grid, palette);
+      downloadBlob(
+        blob,
+        `${(projectName || DEFAULT_PROJECT_NAME)
+          .replace(/\s+/g, "-")
+          .toLowerCase()}-stats.png`,
+      );
+      setProcessing({
+        status: copy.statsExported,
+      });
+    } catch (reason) {
+      setProcessing({
+        error: reason instanceof Error ? reason.message : copy.unableExportStats,
+        status: null,
+      });
+    }
+  }, [copy, grid, palette, projectName, setProcessing]);
+
   const handleFitView = useCallback(() => {
     setFitSignal((value) => value + 1);
   }, []);
@@ -509,8 +565,122 @@ export function EditorApp() {
       return copy.noGridLoaded;
     }
 
-    return copy.summary(grid.width, grid.height, new Set(grid.cells).size);
-  }, [copy, grid]);
+    return copy.summary(grid.width, grid.height, getGridColorUsage(grid, palette).size);
+  }, [copy, grid, palette]);
+
+  const usedPaletteEntries = useMemo(() => {
+    if (!grid) {
+      return [];
+    }
+
+    const { byKey } = createPaletteMaps(palette);
+    const usage = getGridColorUsage(grid, palette);
+
+    return getInitialPresentColorKeys(grid)
+      .map((key) => {
+        const color = byKey.get(key);
+        const currentUsage = usage.get(key);
+
+        if (!color) {
+          return null;
+        }
+
+        return {
+          key,
+          hex: color.hex,
+          name: color.name,
+          count: currentUsage?.count ?? 0,
+          excluded: excludedColorKeys.includes(key),
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+      .sort((left, right) => {
+        if (right.count !== left.count) {
+          return right.count - left.count;
+        }
+
+        return left.key.localeCompare(right.key);
+      });
+  }, [excludedColorKeys, grid, palette]);
+
+  const handleToggleExcludedColorKey = useCallback(
+    async (colorKey: string) => {
+      if (!grid) {
+        return;
+      }
+
+      const nextExcludedColorKeys = excludedColorKeys.includes(colorKey)
+        ? excludedColorKeys.filter((key) => key !== colorKey)
+        : [...excludedColorKeys, colorKey];
+
+      if (excludedColorKeys.includes(colorKey)) {
+        setExcludedColorKeys(nextExcludedColorKeys);
+        await handleRegenerate(targetSize, palettePresetId, nextExcludedColorKeys);
+        return;
+      }
+
+      const remappedGrid = remapExcludedColorKey(
+        grid,
+        palette,
+        colorKey,
+        nextExcludedColorKeys,
+      );
+
+      if (!remappedGrid) {
+        setProcessing({
+          error: copy.cannotExcludeLastColor,
+          status: null,
+        });
+        return;
+      }
+
+      const { byKey } = createPaletteMaps(palette);
+      const fallbackColor = remappedGrid.cellKeys
+        .map((key) => byKey.get(key))
+        .find((color) => Boolean(color));
+
+      setExcludedColorKeys(nextExcludedColorKeys);
+      initializeProject({
+        grid: remappedGrid,
+        originalGrid: remappedGrid,
+        palettePresetId,
+        sourceImage,
+        palette,
+        targetSize,
+        excludedColorKeys: nextExcludedColorKeys,
+        viewport,
+        projectId,
+        projectName,
+        dirty: true,
+      });
+
+      if (fallbackColor) {
+        setSelectedColor(fallbackColor.hex);
+      }
+
+      setProcessing({
+        error: null,
+        status: copy.excludedColor(colorKey),
+      });
+    },
+    [
+      copy,
+      excludedColorKeys,
+      grid,
+      handleRegenerate,
+      initializeProject,
+      palette,
+      palettePresetId,
+      projectId,
+      projectName,
+      setExcludedColorKeys,
+      setProcessing,
+      setSelectedColor,
+      sourceImage,
+      targetSize,
+      viewport,
+    ],
+  );
 
   const toolLabel = messages.editor.toolbar[selectedTool];
 
@@ -542,6 +712,7 @@ export function EditorApp() {
           onOpenLibrary={() => setLibraryOpen(true)}
           onSave={() => void handleSave()}
           onExport={() => void handleExport()}
+          onExportStats={() => void handleExportStats()}
           onReset={resetToOriginal}
           onRegenerate={() => void handleRegenerate()}
           onRenderModeChange={handleRenderModeChange}
@@ -595,6 +766,8 @@ export function EditorApp() {
               palettePresetId={palettePresetId}
               selectedColor={selectedColor}
               palette={palette}
+              excludedColorKeys={excludedColorKeys}
+              usedPaletteEntries={usedPaletteEntries}
               showGrid={viewport.showGrid}
               isPixelating={processing.isPixelating || processing.isLoadingProject}
               onUpload={openFilePicker}
@@ -608,10 +781,17 @@ export function EditorApp() {
               onSelectPalettePreset={(nextPalettePresetId) => {
                 setPalettePresetId(nextPalettePresetId);
                 if (sourceImage) {
-                  void handleRegenerate(targetSize, nextPalettePresetId);
+                  void handleRegenerate(
+                    targetSize,
+                    nextPalettePresetId,
+                    excludedColorKeys,
+                  );
                 }
               }}
               onSelectColor={setSelectedColor}
+              onToggleExcludedColorKey={(colorKey) => {
+                void handleToggleExcludedColorKey(colorKey);
+              }}
               onToggleGrid={() => setViewport({ showGrid: !viewport.showGrid })}
             />
           </div>

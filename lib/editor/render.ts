@@ -1,10 +1,12 @@
 import {
   BASE_CANVAS_CELL_SIZE,
+  EXTERNAL_BACKGROUND_FILL,
   DEFAULT_CANVAS_BACKGROUND,
   MAX_ZOOM,
   MIN_ZOOM,
 } from "@/lib/constants";
-import { getReadableTextColor, normalizeHex } from "@/lib/color";
+import { getReadableTextColor } from "@/lib/color";
+import { getGridDisplayFill } from "@/lib/editor/grid-colors";
 import { clamp } from "@/lib/utils";
 import type {
   GridRenderMode,
@@ -21,12 +23,6 @@ export interface CanvasRenderInput {
   viewport: ViewportState;
   width: number;
   height: number;
-}
-
-function createPaletteCodeLookup(palette: PaletteColor[]) {
-  return new Map(
-    palette.map((color) => [normalizeHex(color.hex), color.code ?? color.name]),
-  );
 }
 
 export function getRenderedCellSize(zoom: number) {
@@ -116,7 +112,6 @@ export function zoomViewportAtPoint(
 export function renderPixelGrid({
   canvas,
   grid,
-  palette,
   renderMode,
   viewport,
   width,
@@ -154,6 +149,8 @@ export function renderPixelGrid({
   for (let y = 0; y < grid.height; y += 1) {
     for (let x = 0; x < grid.width; x += 1) {
       context.fillStyle = grid.cells[y * grid.width + x];
+      const cellIndex = y * grid.width + x;
+      context.fillStyle = getGridDisplayFill(grid, cellIndex, EXTERNAL_BACKGROUND_FILL);
       context.fillRect(
         viewport.offsetX + x * cellSize,
         viewport.offsetY + y * cellSize,
@@ -164,7 +161,6 @@ export function renderPixelGrid({
   }
 
   if (renderMode === "coded" && cellSize >= 12) {
-    const paletteCodeLookup = createPaletteCodeLookup(palette);
     const fontSize = Math.max(9, Math.min(18, Math.floor(cellSize * 0.36)));
 
     context.textAlign = "center";
@@ -173,8 +169,13 @@ export function renderPixelGrid({
 
     for (let y = 0; y < grid.height; y += 1) {
       for (let x = 0; x < grid.width; x += 1) {
-        const fill = grid.cells[y * grid.width + x];
-        const label = paletteCodeLookup.get(normalizeHex(fill));
+        const cellIndex = y * grid.width + x;
+        if (grid.externalMask[cellIndex]) {
+          continue;
+        }
+
+        const fill = grid.cells[cellIndex];
+        const label = grid.cellKeys[cellIndex];
 
         if (!label) {
           continue;

@@ -40,6 +40,9 @@ export interface PixelGrid {
   width: number;
   height: number;
   cells: string[];
+  cellKeys: string[];
+  initialCellKeys: string[];
+  externalMask: boolean[];
   background: string;
 }
 

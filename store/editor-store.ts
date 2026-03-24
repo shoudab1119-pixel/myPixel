@@ -9,6 +9,10 @@ import {
   findGridPresetById,
 } from "@/lib/constants";
 import { areCellsEqual, cloneGrid } from "@/lib/editor/grid";
+import {
+  normalizePixelGrid,
+  replaceGridCellsWithPalette,
+} from "@/lib/editor/grid-colors";
 import { pushPastSnapshot } from "@/lib/editor/history";
 import {
   DEFAULT_PALETTE,
@@ -41,6 +45,7 @@ interface EditorState {
   palette: PaletteColor[];
   sourceImage: SourceImageAsset | null;
   targetSize: GridSizeOption;
+  excludedColorKeys: string[];
   selectedTool: ToolType;
   selectedColor: string;
   renderMode: GridRenderMode;
@@ -54,6 +59,7 @@ interface EditorState {
   setProjectId: (projectId: string | null) => void;
   setTargetSize: (targetSize: GridSizeOption) => void;
   setPalettePresetId: (palettePresetId: PalettePresetId) => void;
+  setExcludedColorKeys: (excludedColorKeys: string[]) => void;
   setSelectedTool: (selectedTool: ToolType) => void;
   setSelectedColor: (selectedColor: string) => void;
   setRenderMode: (renderMode: GridRenderMode) => void;
@@ -74,6 +80,7 @@ interface EditorState {
     sourceImage: SourceImageAsset | null;
     palette?: PaletteColor[];
     targetSize: GridSizeOption;
+    excludedColorKeys?: string[];
     viewport?: ViewportState;
     projectId?: string | null;
     projectName?: string;
@@ -130,6 +137,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   palette: DEFAULT_PALETTE,
   sourceImage: null,
   targetSize: DEFAULT_GRID_PRESET,
+  excludedColorKeys: [],
   selectedTool: "hand",
   selectedColor: DEFAULT_PALETTE_PRESET.defaultColorHex,
   renderMode: "plain",
@@ -154,6 +162,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           : preset.defaultColorHex,
       };
     }),
+  setExcludedColorKeys: (excludedColorKeys) => set({ excludedColorKeys }),
   setSelectedTool: (selectedTool) => set({ selectedTool }),
   setSelectedColor: (selectedColor) => set({ selectedColor }),
   setRenderMode: (renderMode) => set({ renderMode }),
@@ -215,6 +224,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     sourceImage,
     palette = DEFAULT_PALETTE,
     targetSize,
+    excludedColorKeys = [],
     viewport,
     projectId = null,
     projectName = DEFAULT_PROJECT_NAME,
@@ -222,16 +232,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }) =>
     set((state) => {
       const resolvedPreset = getPalettePreset(palettePresetId);
+      const normalizedGrid = normalizePixelGrid(grid, palette);
+      const normalizedOriginalGrid = normalizePixelGrid(originalGrid ?? grid, palette);
 
       return {
         projectId,
         projectName,
-        grid: cloneGrid(grid),
-        originalGrid: cloneGrid(originalGrid ?? grid),
+        grid: cloneGrid(normalizedGrid),
+        originalGrid: cloneGrid(normalizedOriginalGrid),
         palettePresetId: resolvedPreset.id,
         sourceImage,
         palette,
         targetSize,
+        excludedColorKeys,
         selectedColor: palette.some((color) => color.hex === state.selectedColor)
           ? state.selectedColor
           : resolvedPreset.defaultColorHex,
@@ -251,16 +264,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         snapshot.palettePresetId,
         snapshot.palette,
       );
+      const normalizedGrid = normalizePixelGrid(snapshot.grid, snapshot.palette);
+      const normalizedOriginalGrid = normalizePixelGrid(
+        snapshot.originalGrid,
+        snapshot.palette,
+      );
 
       return {
         projectId: snapshot.projectId,
         projectName: snapshot.projectName,
-        grid: cloneGrid(snapshot.grid),
-        originalGrid: cloneGrid(snapshot.originalGrid),
+        grid: cloneGrid(normalizedGrid),
+        originalGrid: cloneGrid(normalizedOriginalGrid),
         palettePresetId,
         palette: snapshot.palette,
         sourceImage: snapshot.sourceImage,
         targetSize: snapshot.targetSize,
+        excludedColorKeys: snapshot.excludedColorKeys ?? [],
         selectedColor: snapshot.selectedColor,
         renderMode: snapshot.renderMode ?? "plain",
         viewport: snapshot.viewport,
@@ -279,7 +298,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     return {
-      version: 2,
+      version: 3,
       projectId: state.projectId ?? crypto.randomUUID(),
       projectName: state.projectName.trim() || DEFAULT_PROJECT_NAME,
       grid: cloneGrid(state.grid),
@@ -291,6 +310,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       targetSize: state.targetSize,
       viewport: state.viewport,
       sourceImage: state.sourceImage,
+      excludedColorKeys: state.excludedColorKeys,
     };
   },
   startHistoryTransaction: () =>
@@ -305,12 +325,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
   applyCells: (cells) =>
     set((state) => ({
-      grid: state.grid
-        ? {
-            ...state.grid,
-            cells,
-          }
-        : null,
+      grid: state.grid ? replaceGridCellsWithPalette(state.grid, cells, state.palette) : null,
     })),
   commitHistoryTransaction: () =>
     set((state) => {
@@ -360,10 +375,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
 
       return {
-        grid: {
-          ...state.grid,
-          cells,
-        },
+        grid: replaceGridCellsWithPalette(state.grid, cells, state.palette),
         history: {
           ...state.history,
           past: pushPastSnapshot(state.history.past, state.grid.cells, state.history.limit),
@@ -409,10 +421,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const previous = state.history.past[state.history.past.length - 1];
 
       return {
-        grid: {
-          ...state.grid,
-          cells: [...previous],
-        },
+        grid: replaceGridCellsWithPalette(state.grid, [...previous], state.palette),
         history: {
           ...state.history,
           past: state.history.past.slice(0, -1),
@@ -431,10 +440,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const [nextCells, ...future] = state.history.future;
 
       return {
-        grid: {
-          ...state.grid,
-          cells: [...nextCells],
-        },
+        grid: replaceGridCellsWithPalette(state.grid, [...nextCells], state.palette),
         history: {
           ...state.history,
           past: pushPastSnapshot(state.history.past, state.grid.cells, state.history.limit),
@@ -466,6 +472,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       palette: DEFAULT_PALETTE,
       sourceImage: null,
       targetSize: DEFAULT_GRID_PRESET,
+      excludedColorKeys: [],
       selectedTool: "hand",
       selectedColor: DEFAULT_PALETTE_PRESET.defaultColorHex,
       renderMode: "plain",

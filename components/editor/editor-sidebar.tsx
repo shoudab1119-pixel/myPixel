@@ -17,6 +17,14 @@ import type {
   SourceImageAsset,
 } from "@/types/editor";
 
+interface UsedPaletteEntry {
+  key: string;
+  hex: string;
+  name: string;
+  count: number;
+  excluded: boolean;
+}
+
 interface EditorSidebarProps {
   grid: PixelGrid | null;
   sourceImage: SourceImageAsset | null;
@@ -24,6 +32,8 @@ interface EditorSidebarProps {
   palettePresetId: PalettePresetId;
   selectedColor: string;
   palette: PaletteColor[];
+  excludedColorKeys: string[];
+  usedPaletteEntries: UsedPaletteEntry[];
   showGrid: boolean;
   isPixelating: boolean;
   onUpload: () => void;
@@ -31,6 +41,7 @@ interface EditorSidebarProps {
   onSelectPreset: (preset: GridSizeOption) => void;
   onSelectPalettePreset: (palettePresetId: PalettePresetId) => void;
   onSelectColor: (color: string) => void;
+  onToggleExcludedColorKey: (colorKey: string) => void;
   onToggleGrid: () => void;
 }
 
@@ -41,6 +52,8 @@ export function EditorSidebar({
   palettePresetId,
   selectedColor,
   palette,
+  excludedColorKeys,
+  usedPaletteEntries,
   showGrid,
   isPixelating,
   onUpload,
@@ -48,6 +61,7 @@ export function EditorSidebar({
   onSelectPreset,
   onSelectPalettePreset,
   onSelectColor,
+  onToggleExcludedColorKey,
   onToggleGrid,
 }: EditorSidebarProps) {
   const { messages } = useLocale();
@@ -241,6 +255,60 @@ export function EditorSidebar({
             <ExternalLink className="h-4 w-4" />
             {copy.openPalettePage}
           </Link>
+
+          <div className="rounded-[22px] border border-white/8 bg-black/15 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-mist-50/35">
+                  {copy.filterEyebrow}
+                </p>
+                <p className="mt-2 text-sm font-medium text-mist-50">
+                  {copy.filterTitle}
+                </p>
+              </div>
+              {excludedColorKeys.length > 0 ? (
+                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-mist-50/52">
+                  {copy.filterExcludedCount(excludedColorKeys.length)}
+                </span>
+              ) : null}
+            </div>
+
+            {usedPaletteEntries.length > 0 ? (
+              <div className="mt-4 grid max-h-56 grid-cols-2 gap-2 overflow-auto pr-1">
+                {usedPaletteEntries.map((entry) => (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    onClick={() => onToggleExcludedColorKey(entry.key)}
+                    disabled={isPixelating}
+                    className={cn(
+                      "rounded-2xl border px-3 py-3 text-left transition",
+                      entry.excluded
+                        ? "border-rose-400/30 bg-rose-500/10 text-mist-50/45"
+                        : "border-white/8 bg-white/[0.03] text-mist-50/72 hover:border-white/12 hover:text-mist-50",
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-5 w-5 rounded-full border border-black/10"
+                        style={{ backgroundColor: entry.hex }}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold uppercase tracking-[0.14em]">
+                          {entry.key}
+                        </p>
+                        <p className="mt-1 text-[11px] text-mist-50/45">
+                          {copy.filterUsage(entry.count)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-mist-50/52">{copy.filterEmpty}</p>
+            )}
+          </div>
         </div>
       </Panel>
     </div>

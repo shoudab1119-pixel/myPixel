@@ -11,6 +11,9 @@ export function createBlankGrid(
     height,
     background: fill,
     cells: new Array(width * height).fill(fill),
+    cellKeys: new Array(width * height).fill(fill),
+    initialCellKeys: new Array(width * height).fill(fill),
+    externalMask: new Array(width * height).fill(false),
   };
 }
 
@@ -18,6 +21,9 @@ export function cloneGrid(grid: PixelGrid): PixelGrid {
   return {
     ...grid,
     cells: [...grid.cells],
+    cellKeys: [...grid.cellKeys],
+    initialCellKeys: [...grid.initialCellKeys],
+    externalMask: [...grid.externalMask],
   };
 }
 

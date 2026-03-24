@@ -5,6 +5,7 @@ import { Grid3x3, Tag } from "lucide-react";
 import {
   Download,
   FolderOpen,
+  LayoutList,
   RefreshCw,
   RotateCcw,
   Save,
@@ -32,6 +33,7 @@ interface EditorTopbarProps {
   onOpenLibrary: () => void;
   onSave: () => void;
   onExport: () => void;
+  onExportStats: () => void;
   onReset: () => void;
   onRegenerate: () => void;
   onRenderModeChange: (renderMode: GridRenderMode) => void;
@@ -51,6 +53,7 @@ export function EditorTopbar({
   onOpenLibrary,
   onSave,
   onExport,
+  onExportStats,
   onReset,
   onRegenerate,
   onRenderModeChange,
@@ -166,6 +169,16 @@ export function EditorTopbar({
           icon={<Download className="h-4 w-4" />}
         >
           {copy.exportPng}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            commitProjectName();
+            onExportStats();
+          }}
+          icon={<LayoutList className="h-4 w-4" />}
+        >
+          {copy.exportStats}
         </Button>
         <Button
           onClick={() => {

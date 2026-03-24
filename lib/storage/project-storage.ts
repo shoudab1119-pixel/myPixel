@@ -63,14 +63,31 @@ function writeFallbackStore(records: ProjectRecord[]) {
 }
 
 function toListItem(record: ProjectRecord): ProjectListItem {
+  const grid = record.snapshot.grid;
+  const uniqueColorKeys = new Set<string>();
+  const cellKeys =
+    grid.cellKeys && grid.cellKeys.length === grid.cells.length ? grid.cellKeys : grid.cells;
+  const externalMask =
+    grid.externalMask && grid.externalMask.length === grid.cells.length
+      ? grid.externalMask
+      : new Array(grid.cells.length).fill(false);
+
+  cellKeys.forEach((key, index) => {
+    if (externalMask[index]) {
+      return;
+    }
+
+    uniqueColorKeys.add(key);
+  });
+
   return {
     id: record.id,
     name: record.name,
     updatedAt: record.updatedAt,
     thumbnailDataUrl: record.thumbnailDataUrl,
-    width: record.snapshot.grid.width,
-    height: record.snapshot.grid.height,
-    colorCount: new Set(record.snapshot.grid.cells).size,
+    width: grid.width,
+    height: grid.height,
+    colorCount: uniqueColorKeys.size,
   };
 }
 

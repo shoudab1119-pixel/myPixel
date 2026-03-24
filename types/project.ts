@@ -21,6 +21,7 @@ export interface ProjectSnapshot {
   targetSize: GridSizeOption;
   viewport: ViewportState;
   sourceImage: SourceImageAsset | null;
+  excludedColorKeys?: string[];
 }
 
 export interface ProjectRecord {

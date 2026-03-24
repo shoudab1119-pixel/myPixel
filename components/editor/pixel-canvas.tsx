@@ -43,6 +43,7 @@ interface HoverSample {
   hex: string;
   x: number;
   y: number;
+  external: boolean;
 }
 
 function isTypingTarget(target: EventTarget | null) {
@@ -140,12 +141,6 @@ export function PixelCanvas({
   }, [grid, palette, renderMode, viewport, viewportSize.height, viewportSize.width]);
 
   useEffect(() => {
-    if (selectedTool !== "eyedropper") {
-      setHoverSample(null);
-    }
-  }, [selectedTool]);
-
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target)) {
         return;
@@ -233,7 +228,7 @@ export function PixelCanvas({
     const state = useEditorStore.getState();
     const activeGrid = liveGrid ?? state.grid;
 
-    if (!activeGrid || state.selectedTool !== "eyedropper") {
+    if (!activeGrid) {
       setHoverSample(null);
       return;
     }
@@ -245,16 +240,19 @@ export function PixelCanvas({
     }
 
     const hex = activeGrid.cells[cell.index];
+    const key = activeGrid.cellKeys[cell.index];
     const match =
+      state.palette.find((color) => color.code === key) ??
       state.palette.find((color) => color.hex === hex) ??
       state.palette.find((color) => color.hex.toLowerCase() === hex.toLowerCase());
     const screen = getCellScreenCenter(state.viewport, cell.x, cell.y);
 
     setHoverSample({
-      code: match?.code ?? match?.name ?? hex,
+      code: match?.code ?? key ?? match?.name ?? hex,
       hex,
       x: screen.x,
       y: screen.y,
+      external: activeGrid.externalMask[cell.index] ?? false,
     });
   };
 
@@ -330,11 +328,7 @@ export function PixelCanvas({
     const state = useEditorStore.getState();
     const liveGrid = state.grid;
 
-    if (state.selectedTool === "eyedropper") {
-      updateHoverSample(point, liveGrid);
-    } else if (hoverSample) {
-      setHoverSample(null);
-    }
+    updateHoverSample(point, liveGrid);
 
     if (!interactionRef.current) {
       return;
@@ -438,6 +432,11 @@ export function PixelCanvas({
               <p className="mt-1 uppercase tracking-[0.14em] text-mist-50/55">
                 {hoverSample.hex}
               </p>
+              {hoverSample.external ? (
+                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-mist-50/42">
+                  {copy.externalBackground}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/10 bg-ink-950/70 px-3 py-2 text-xs uppercase tracking-[0.16em] text-mist-50/48">

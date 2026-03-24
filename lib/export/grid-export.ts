@@ -1,4 +1,6 @@
-import { getReadableTextColor, normalizeHex } from "@/lib/color";
+import { getReadableTextColor } from "@/lib/color";
+import { EXTERNAL_BACKGROUND_FILL } from "@/lib/constants";
+import { getGridColorUsage, getGridDisplayFill } from "@/lib/editor/grid-colors";
 import { clamp } from "@/lib/utils";
 import type { GridRenderMode, PaletteColor, PixelGrid } from "@/types/editor";
 
@@ -6,12 +8,6 @@ interface GridExportOptions {
   cellSize?: number;
   palette?: PaletteColor[];
   renderMode?: GridRenderMode;
-}
-
-function createPaletteCodeLookup(palette: PaletteColor[]) {
-  return new Map(
-    palette.map((color) => [normalizeHex(color.hex), color.code ?? color.name]),
-  );
 }
 
 function resolveCellSize(grid: PixelGrid, renderMode: GridRenderMode, cellSize?: number) {
@@ -69,14 +65,13 @@ function drawGrid(grid: PixelGrid, options: GridExportOptions = {}) {
 
   for (let y = 0; y < grid.height; y += 1) {
     for (let x = 0; x < grid.width; x += 1) {
-      context.fillStyle = grid.cells[y * grid.width + x];
+      const cellIndex = y * grid.width + x;
+      context.fillStyle = getGridDisplayFill(grid, cellIndex, EXTERNAL_BACKGROUND_FILL);
       context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
     }
   }
 
   if (renderMode === "coded" && options.palette?.length) {
-    const paletteCodeLookup = createPaletteCodeLookup(options.palette);
-
     drawGridLines(context, grid, cellSize, "rgba(15, 23, 35, 0.22)");
 
     const fontSize = Math.max(10, Math.min(18, Math.floor(cellSize * 0.34)));
@@ -86,8 +81,13 @@ function drawGrid(grid: PixelGrid, options: GridExportOptions = {}) {
 
     for (let y = 0; y < grid.height; y += 1) {
       for (let x = 0; x < grid.width; x += 1) {
-        const fill = grid.cells[y * grid.width + x];
-        const label = paletteCodeLookup.get(normalizeHex(fill));
+        const cellIndex = y * grid.width + x;
+        if (grid.externalMask[cellIndex]) {
+          continue;
+        }
+
+        const fill = grid.cells[cellIndex];
+        const label = grid.cellKeys[cellIndex];
 
         if (!label) {
           continue;
@@ -132,4 +132,87 @@ export async function exportGridToBlob(grid: PixelGrid, options: GridExportOptio
 export function createGridThumbnail(grid: PixelGrid) {
   const cellSize = Math.max(3, Math.floor(192 / Math.max(grid.width, grid.height)));
   return drawGrid(grid, { cellSize, renderMode: "plain" }).toDataURL("image/png");
+}
+
+export async function exportGridStatsToBlob(
+  grid: PixelGrid,
+  palette: PaletteColor[],
+) {
+  const usage = [...getGridColorUsage(grid, palette).values()].sort((left, right) => {
+    if (right.count !== left.count) {
+      return right.count - left.count;
+    }
+
+    return (left.color.code ?? left.color.name).localeCompare(
+      right.color.code ?? right.color.name,
+    );
+  });
+
+  const swatchSize = 30;
+  const rowHeight = 52;
+  const padding = 28;
+  const width = 760;
+  const height = Math.max(180, padding * 2 + 72 + usage.length * rowHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Canvas is unavailable.");
+  }
+
+  context.fillStyle = "#0f1723";
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "#f8fafc";
+  context.font = "700 28px ui-sans-serif, system-ui, sans-serif";
+  context.fillText("Color Usage", padding, 44);
+
+  context.fillStyle = "rgba(248, 250, 252, 0.6)";
+  context.font = "500 14px ui-sans-serif, system-ui, sans-serif";
+  context.fillText("Only non-background external cells are counted.", padding, 68);
+
+  let offsetY = padding + 72;
+
+  for (const item of usage) {
+    const code = item.color.code ?? item.color.name;
+
+    context.fillStyle = "rgba(255,255,255,0.04)";
+    context.fillRect(padding - 10, offsetY - 14, width - padding * 2 + 20, rowHeight - 4);
+
+    context.fillStyle = item.color.hex;
+    context.fillRect(padding, offsetY, swatchSize, swatchSize);
+
+    context.strokeStyle = "rgba(255,255,255,0.14)";
+    context.lineWidth = 1;
+    context.strokeRect(padding, offsetY, swatchSize, swatchSize);
+
+    context.fillStyle = "#f8fafc";
+    context.font = "700 18px ui-sans-serif, system-ui, sans-serif";
+    context.fillText(code, padding + swatchSize + 16, offsetY + 20);
+
+    context.fillStyle = "rgba(248, 250, 252, 0.68)";
+    context.font = "500 14px ui-sans-serif, system-ui, sans-serif";
+    context.fillText(item.color.hex, padding + swatchSize + 16, offsetY + 40);
+
+    context.fillStyle = "#fbbf24";
+    context.font = "700 18px ui-sans-serif, system-ui, sans-serif";
+    context.textAlign = "right";
+    context.fillText(String(item.count), width - padding, offsetY + 30);
+    context.textAlign = "left";
+
+    offsetY += rowHeight;
+  }
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Unable to export stats PNG."));
+        return;
+      }
+
+      resolve(blob);
+    }, "image/png");
+  });
 }

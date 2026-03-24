@@ -15,6 +15,7 @@ export interface PixelWorkerRequest {
     };
     palette: PaletteColor[];
     backgroundHex: string;
+    excludedColorKeys?: string[];
   };
 }
 
@@ -24,6 +25,7 @@ export interface PixelWorkerSuccessResponse {
   payload: {
     grid: PixelGrid;
     usedColors: string[];
+    usedColorKeys: string[];
   };
 }
 
