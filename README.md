@@ -202,6 +202,20 @@ Or connect the GitHub repository in the Vercel dashboard:
 4. Output setting: default Next.js output
 5. Click deploy
 
+### GitHub Pages
+
+This repository also includes an automated GitHub Pages workflow.
+
+- Repository URL: `https://github.com/shoudab1119-pixel/myPixel`
+- Expected site URL: `https://shoudab1119-pixel.github.io/myPixel/`
+- Workflow file: `.github/workflows/deploy-pages.yml`
+
+GitHub Pages build notes:
+
+- `next.config.ts` switches to static export when `GITHUB_PAGES=true`
+- `basePath` and `assetPrefix` are set to `/myPixel`
+- Every push to `main` triggers a fresh static deployment
+
 ### Self-host
 
 ```bash
