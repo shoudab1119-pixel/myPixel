@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { usePixelWorker } from "@/hooks/use-pixel-worker";
@@ -85,6 +86,7 @@ export function EditorApp() {
   const [fitSignal, setFitSignal] = useState(0);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [editorView, setEditorView] = useState<"generate" | "edit">("generate");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { pixelate } = usePixelWorker();
 
   const {
@@ -686,7 +688,7 @@ export function EditorApp() {
           </Panel>
         ) : null}
 
-        <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch">
+        <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)]">
           <div className="flex min-h-[640px] flex-col gap-4 xl:relative xl:min-h-0 xl:h-full">
             <div className="xl:hidden">
               <EditorToolbar
@@ -743,7 +745,10 @@ export function EditorApp() {
               </Panel>
             </div>
 
-            <div className="hidden xl:absolute xl:right-5 xl:top-5 xl:z-10 xl:block xl:max-w-[280px]">
+            <div
+              className="hidden xl:absolute xl:top-5 xl:z-10 xl:block xl:max-w-[280px]"
+              style={{ right: sidebarOpen ? 360 : 20 }}
+            >
               <Panel className="border-slate-200/80 bg-white/90 px-4 py-3 text-sm text-slate-600 shadow-soft backdrop-blur">
                 <p className="font-medium text-slate-900">{summary}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -764,43 +769,60 @@ export function EditorApp() {
                 onFit={handleFitView}
               />
             </div>
-          </div>
 
-          <div className="pr-1 xl:min-h-0 xl:h-full">
-            <EditorSidebar
-              editorView={editorView}
-              grid={grid}
-              sourceImage={sourceImage}
-              targetSize={targetSize}
-              palettePresetId={palettePresetId}
-              selectedColor={selectedColor}
-              palette={palette}
-              usedPaletteEntries={usedPaletteEntries}
-              showGrid={viewport.showGrid}
-              isPixelating={processing.isPixelating || processing.isLoadingProject}
-              onUpload={openFilePicker}
-              onRegenerate={() => void handleRegenerate()}
-              onRemoveNoise={handleRemoveNoise}
-              onSelectPreset={(preset) => {
-                setTargetSize(preset);
-                if (sourceImage) {
-                  void handleRegenerate(preset);
-                }
-              }}
-              onSelectPalettePreset={(nextPalettePresetId) => {
-                setPalettePresetId(nextPalettePresetId);
-                if (sourceImage) {
-                  void handleRegenerate(
-                    targetSize,
-                    nextPalettePresetId,
-                    excludedColorKeys,
-                  );
-                }
-              }}
-              onSelectColor={setSelectedColor}
-              onDeleteColorKey={handleDeleteColorKey}
-              onToggleGrid={() => setViewport({ showGrid: !viewport.showGrid })}
-            />
+            <div className="absolute right-3 top-3 z-20 flex items-start gap-3 xl:right-5 xl:top-5">
+              {sidebarOpen ? (
+                <div className="h-[calc(100vh-160px)] w-[min(320px,88vw)] overflow-hidden rounded-[32px] border border-slate-200/80 bg-white/88 shadow-[0_28px_70px_rgba(15,23,42,0.14)] backdrop-blur">
+                  <EditorSidebar
+                    editorView={editorView}
+                    grid={grid}
+                    sourceImage={sourceImage}
+                    targetSize={targetSize}
+                    palettePresetId={palettePresetId}
+                    selectedColor={selectedColor}
+                    palette={palette}
+                    usedPaletteEntries={usedPaletteEntries}
+                    showGrid={viewport.showGrid}
+                    isPixelating={processing.isPixelating || processing.isLoadingProject}
+                    onUpload={openFilePicker}
+                    onRegenerate={() => void handleRegenerate()}
+                    onRemoveNoise={handleRemoveNoise}
+                    onSelectPreset={(preset) => {
+                      setTargetSize(preset);
+                      if (sourceImage) {
+                        void handleRegenerate(preset);
+                      }
+                    }}
+                    onSelectPalettePreset={(nextPalettePresetId) => {
+                      setPalettePresetId(nextPalettePresetId);
+                      if (sourceImage) {
+                        void handleRegenerate(
+                          targetSize,
+                          nextPalettePresetId,
+                          excludedColorKeys,
+                        );
+                      }
+                    }}
+                    onSelectColor={setSelectedColor}
+                    onDeleteColorKey={handleDeleteColorKey}
+                    onToggleGrid={() => setViewport({ showGrid: !viewport.showGrid })}
+                  />
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                onClick={() => setSidebarOpen((value) => !value)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/92 text-slate-600 shadow-soft backdrop-blur transition hover:border-slate-300 hover:text-slate-900"
+              >
+                {sidebarOpen ? (
+                  <ChevronRight className="h-5 w-5" />
+                ) : (
+                  <ChevronLeft className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
