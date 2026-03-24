@@ -130,7 +130,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   palette: DEFAULT_PALETTE,
   sourceImage: null,
   targetSize: DEFAULT_GRID_PRESET,
-  selectedTool: "brush",
+  selectedTool: "hand",
   selectedColor: DEFAULT_PALETTE_PRESET.defaultColorHex,
   renderMode: "plain",
   viewport: createDefaultViewport(),
@@ -380,7 +380,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (color) {
       set({
         selectedColor: color,
-        selectedTool: "brush",
       });
     }
   },
@@ -467,7 +466,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       palette: DEFAULT_PALETTE,
       sourceImage: null,
       targetSize: DEFAULT_GRID_PRESET,
-      selectedTool: "brush",
+      selectedTool: "hand",
       selectedColor: DEFAULT_PALETTE_PRESET.defaultColorHex,
       renderMode: "plain",
       viewport: createDefaultViewport(),

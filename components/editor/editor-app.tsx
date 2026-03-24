@@ -151,6 +151,10 @@ export function EditorApp() {
   }, []);
 
   useEffect(() => {
+    setSelectedTool("hand");
+  }, [setSelectedTool]);
+
+  useEffect(() => {
     saveEditorPreferences({
       ...defaultEditorPreferences,
       lastProjectId: projectId,

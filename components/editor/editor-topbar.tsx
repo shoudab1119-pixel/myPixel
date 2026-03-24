@@ -102,10 +102,10 @@ export function EditorTopbar({
             aria-pressed={renderMode === "plain"}
             onClick={() => onRenderModeChange("plain")}
             className={cn(
-              "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm transition",
+              "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition",
               renderMode === "plain"
-                ? "bg-mint-300/14 text-mist-50"
-                : "text-mist-50/62 hover:text-mist-50",
+                ? "border-mint-300/35 bg-mint-300/18 font-medium text-mist-50 shadow-[inset_0_0_0_1px_rgba(163,230,53,0.12),0_8px_24px_rgba(163,230,53,0.12)]"
+                : "border-transparent text-mist-50/62 hover:bg-white/[0.04] hover:text-mist-50",
             )}
           >
             <Grid3x3 className="h-4 w-4" />
@@ -116,10 +116,10 @@ export function EditorTopbar({
             aria-pressed={renderMode === "coded"}
             onClick={() => onRenderModeChange("coded")}
             className={cn(
-              "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm transition",
+              "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition",
               renderMode === "coded"
-                ? "bg-ember-500/14 text-mist-50"
-                : "text-mist-50/62 hover:text-mist-50",
+                ? "border-ember-400/35 bg-ember-500/18 font-medium text-mist-50 shadow-[inset_0_0_0_1px_rgba(251,146,60,0.12),0_8px_24px_rgba(251,146,60,0.12)]"
+                : "border-transparent text-mist-50/62 hover:bg-white/[0.04] hover:text-mist-50",
             )}
           >
             <Tag className="h-4 w-4" />
