@@ -23,9 +23,9 @@ export function CanvasControls({
   const zoomPercent = Math.round(zoom * 100);
 
   return (
-    <Panel className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <Panel className="flex flex-wrap items-center justify-between gap-3 border-slate-200 bg-white px-4 py-3 shadow-soft">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-mist-50/40">
+        <span className="text-xs uppercase tracking-[0.18em] text-slate-400">
           {copy.zoomLabel}
         </span>
         <input
@@ -47,11 +47,11 @@ export function CanvasControls({
           }}
           className="h-2 w-full min-w-[180px] max-w-[280px] cursor-pointer accent-ember-400"
         />
-        <span className="min-w-14 text-right text-sm font-medium text-mist-50/68">
+        <span className="min-w-14 text-right text-sm font-medium text-slate-600">
           {zoomPercent}%
         </span>
         <Button
-          variant="secondary"
+          variant="light"
           size="sm"
           onClick={onFit}
           icon={<Focus className="h-4 w-4" />}
@@ -60,7 +60,7 @@ export function CanvasControls({
         </Button>
       </div>
 
-      <p className="text-xs text-mist-50/40">{copy.wheelHint}</p>
+      <p className="text-xs text-slate-400">{copy.wheelHint}</p>
     </Panel>
   );
 }

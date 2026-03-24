@@ -71,7 +71,7 @@ export function EditorTopbar({
   };
 
   return (
-    <Panel className="flex flex-col gap-4 p-4 xl:flex-row xl:items-center xl:justify-between">
+    <Panel className="flex flex-col gap-4 border-slate-200 bg-white p-4 shadow-soft xl:flex-row xl:items-center xl:justify-between">
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <input
@@ -85,21 +85,21 @@ export function EditorTopbar({
               setDraftName(event.currentTarget.value);
               onProjectNameChange(event.currentTarget.value);
             }}
-            className="h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/15 px-4 font-display text-lg text-mist-50 outline-none transition placeholder:text-mist-50/30 focus:border-mint-300/40"
+            className="h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 font-display text-lg text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300"
             placeholder={copy.placeholder}
           />
-          <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.18em] text-mist-50/50">
+          <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-500">
             {dirty ? copy.unsavedChanges : copy.savedState}
           </div>
         </div>
-        <p className="mt-3 text-sm text-mist-50/55">
+        <p className="mt-3 text-sm text-slate-500">
           {isPixelating ? copy.processing : isSaving ? copy.saving : status ?? copy.idleHint}
           {lastSavedAt ? ` ${copy.lastSave(formatDateTime(lastSavedAt))}` : ""}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+        <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
           <button
             type="button"
             aria-pressed={renderMode === "plain"}
@@ -107,8 +107,8 @@ export function EditorTopbar({
             className={cn(
               "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition",
               renderMode === "plain"
-                ? "border-mint-300/35 bg-mint-300/18 font-medium text-mist-50 shadow-[inset_0_0_0_1px_rgba(163,230,53,0.12),0_8px_24px_rgba(163,230,53,0.12)]"
-                : "border-transparent text-mist-50/62 hover:bg-white/[0.04] hover:text-mist-50",
+                ? "border-emerald-300 bg-white font-medium text-slate-900 shadow-sm"
+                : "border-transparent text-slate-500 hover:bg-white hover:text-slate-800",
             )}
           >
             <Grid3x3 className="h-4 w-4" />
@@ -121,19 +121,19 @@ export function EditorTopbar({
             className={cn(
               "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition",
               renderMode === "coded"
-                ? "border-ember-400/35 bg-ember-500/18 font-medium text-mist-50 shadow-[inset_0_0_0_1px_rgba(251,146,60,0.12),0_8px_24px_rgba(251,146,60,0.12)]"
-                : "border-transparent text-mist-50/62 hover:bg-white/[0.04] hover:text-mist-50",
+                ? "border-amber-300 bg-white font-medium text-slate-900 shadow-sm"
+                : "border-transparent text-slate-500 hover:bg-white hover:text-slate-800",
             )}
           >
             <Tag className="h-4 w-4" />
             {copy.codedPng}
           </button>
         </div>
-        <Button variant="secondary" onClick={onUpload} icon={<Upload className="h-4 w-4" />}>
+        <Button variant="light" onClick={onUpload} icon={<Upload className="h-4 w-4" />}>
           {hasSourceImage ? copy.replaceImage : copy.upload}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           onClick={onRegenerate}
           disabled={!hasSourceImage || isPixelating}
           icon={<RefreshCw className="h-4 w-4" />}
@@ -141,7 +141,7 @@ export function EditorTopbar({
           {copy.regenerate}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           onClick={() => {
             commitProjectName();
             onOpenLibrary();
@@ -151,7 +151,7 @@ export function EditorTopbar({
           {copy.openSaved}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           onClick={() => {
             commitProjectName();
             onReset();
@@ -161,7 +161,7 @@ export function EditorTopbar({
           {copy.reset}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           onClick={() => {
             commitProjectName();
             onExport();
@@ -171,7 +171,7 @@ export function EditorTopbar({
           {copy.exportPng}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           onClick={() => {
             commitProjectName();
             onExportStats();

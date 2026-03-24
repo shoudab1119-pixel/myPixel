@@ -20,6 +20,7 @@ interface EditorToolbarProps {
   selectedTool: ToolType;
   canUndo: boolean;
   canRedo: boolean;
+  editingEnabled: boolean;
   onSelectTool: (tool: ToolType) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -29,6 +30,7 @@ export function EditorToolbar({
   selectedTool,
   canUndo,
   canRedo,
+  editingEnabled,
   onSelectTool,
   onUndo,
   onRedo,
@@ -49,23 +51,25 @@ export function EditorToolbar({
   ];
 
   return (
-    <Panel className="flex h-full flex-col gap-3 p-3">
+    <Panel className="flex h-full flex-col gap-3 border-slate-200 bg-white p-3 shadow-soft">
       {tools.map((tool) => (
         <button
           key={tool.id}
           type="button"
           onClick={() => onSelectTool(tool.id)}
+          disabled={!editingEnabled && tool.id !== "hand"}
           className={cn(
-            "group flex flex-col items-center gap-2 rounded-[22px] border px-3 py-4 text-center transition",
+            "group flex flex-col items-center gap-2 rounded-[22px] border px-3 py-4 text-center transition disabled:cursor-not-allowed",
             selectedTool === tool.id
-              ? "border-mint-300/40 bg-mint-300/14 text-mist-50"
-              : "border-transparent bg-white/[0.03] text-mist-50/62 hover:border-white/10 hover:bg-white/[0.06] hover:text-mist-50",
+              ? "border-emerald-300 bg-emerald-50 text-slate-900"
+              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700",
+            !editingEnabled && tool.id !== "hand" ? "opacity-45" : "",
           )}
         >
           <tool.icon className="h-5 w-5" />
           <div>
             <p className="text-xs font-medium">{tool.label}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-white/35">
+            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400">
               {tool.shortcut}
             </p>
           </div>
@@ -73,19 +77,19 @@ export function EditorToolbar({
       ))}
       <div className="mt-auto grid gap-2">
         <Button
-          variant="secondary"
+          variant="light"
           size="sm"
           onClick={onUndo}
-          disabled={!canUndo}
+          disabled={!canUndo || !editingEnabled}
           icon={<Undo2 className="h-4 w-4" />}
         >
           {copy.undo}
         </Button>
         <Button
-          variant="secondary"
+          variant="light"
           size="sm"
           onClick={onRedo}
-          disabled={!canRedo}
+          disabled={!canRedo || !editingEnabled}
           icon={<Redo2 className="h-4 w-4" />}
         >
           {copy.redo}

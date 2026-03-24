@@ -22,6 +22,7 @@ import { useEditorStore } from "@/store/editor-store";
 interface PixelCanvasProps {
   fitSignal: number;
   isPixelating: boolean;
+  editingEnabled: boolean;
   onUploadRequest: () => void;
 }
 
@@ -59,6 +60,7 @@ function isTypingTarget(target: EventTarget | null) {
 export function PixelCanvas({
   fitSignal,
   isPixelating,
+  editingEnabled,
   onUploadRequest,
 }: PixelCanvasProps) {
   const { messages } = useLocale();
@@ -168,15 +170,27 @@ export function PixelCanvas({
 
       switch (event.key.toLowerCase()) {
         case "b":
+          if (!editingEnabled) {
+            break;
+          }
           setSelectedTool("brush");
           break;
         case "e":
+          if (!editingEnabled) {
+            break;
+          }
           setSelectedTool("eraser");
           break;
         case "i":
+          if (!editingEnabled) {
+            break;
+          }
           setSelectedTool("eyedropper");
           break;
         case "g":
+          if (!editingEnabled) {
+            break;
+          }
           setSelectedTool("bucket");
           break;
         case "h":
@@ -200,7 +214,7 @@ export function PixelCanvas({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [redo, setSelectedTool, undo]);
+  }, [editingEnabled, redo, setSelectedTool, undo]);
 
   const getLocalPoint = (
     event: PointerEvent<HTMLCanvasElement> | WheelEvent<HTMLCanvasElement>,
@@ -271,7 +285,8 @@ export function PixelCanvas({
       event.button === 1 ||
       event.button === 2 ||
       spacePressedRef.current ||
-      state.selectedTool === "hand"
+      state.selectedTool === "hand" ||
+      !editingEnabled
     ) {
       setIsPanning(true);
       interactionRef.current = {
@@ -296,16 +311,26 @@ export function PixelCanvas({
       return;
     }
 
-    if (state.selectedTool === "eyedropper") {
+    if (editingEnabled && state.selectedTool === "eyedropper") {
       state.pickColorAt(cell.index);
       return;
     }
 
-    if (state.selectedTool === "bucket") {
+    if (editingEnabled && state.selectedTool === "bucket") {
       const result = fillConnectedCells(liveGrid, cell.index, state.selectedColor);
       if (result.changed) {
         state.applyCellsWithHistory(result.cells);
       }
+      return;
+    }
+
+    if (!editingEnabled) {
+      interactionRef.current = {
+        mode: "pan",
+        pointerId: event.pointerId,
+        lastPoint: point,
+      };
+      setIsPanning(true);
       return;
     }
 
@@ -345,7 +370,7 @@ export function PixelCanvas({
       return;
     }
 
-    if (!liveGrid) {
+    if (!liveGrid || !editingEnabled) {
       return;
     }
 
@@ -393,7 +418,7 @@ export function PixelCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative h-full min-h-0 overflow-hidden overscroll-contain rounded-[32px] border border-white/10 bg-ink-900/70"
+      className="relative h-full min-h-0 overflow-hidden overscroll-contain rounded-[32px] border border-slate-200 bg-white shadow-soft"
     >
       {grid ? (
         <>
@@ -410,7 +435,11 @@ export function PixelCanvas({
             onContextMenu={(event) => event.preventDefault()}
             className="h-full w-full touch-none"
             style={{
-              cursor: isPanning
+              cursor: !editingEnabled
+                ? isPanning
+                  ? "grabbing"
+                  : "grab"
+                : isPanning
                 ? "grabbing"
                 : selectedTool === "hand"
                   ? "grab"
@@ -421,30 +450,30 @@ export function PixelCanvas({
           />
           {hoverSample ? (
             <div
-              className="pointer-events-none absolute z-10 rounded-2xl border border-white/10 bg-ink-950/92 px-3 py-2 text-xs text-mist-50 shadow-panel"
+              className="pointer-events-none absolute z-10 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-soft"
               style={{
                 left: hoverSample.x + 14,
                 top: hoverSample.y + 14,
                 transform: "translate(0, 0)",
               }}
             >
-              <p className="font-medium text-mist-50">{hoverSample.code}</p>
-              <p className="mt-1 uppercase tracking-[0.14em] text-mist-50/55">
+              <p className="font-medium text-slate-800">{hoverSample.code}</p>
+              <p className="mt-1 uppercase tracking-[0.14em] text-slate-400">
                 {hoverSample.hex}
               </p>
               {hoverSample.external ? (
-                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-mist-50/42">
+                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-slate-400">
                   {copy.externalBackground}
                 </p>
               ) : null}
             </div>
           ) : null}
-          <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/10 bg-ink-950/70 px-3 py-2 text-xs uppercase tracking-[0.16em] text-mist-50/48">
-            {copy.hint}
+          <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-slate-200 bg-white/92 px-3 py-2 text-xs uppercase tracking-[0.16em] text-slate-400 shadow-sm">
+            {editingEnabled ? copy.hint : copy.generateHint}
           </div>
           {isPixelating ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-ink-950/55 backdrop-blur-sm">
-              <div className="flex items-center gap-3 rounded-full border border-white/10 bg-ink-900/85 px-5 py-3 text-sm text-mist-50">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/55 backdrop-blur-sm">
+              <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-5 py-3 text-sm text-slate-700 shadow-soft">
                 <LoadingRing />
                 {copy.rebuilding}
               </div>
@@ -456,7 +485,7 @@ export function PixelCanvas({
           <EmptyState
             title={copy.emptyTitle}
             description={copy.emptyDescription}
-            action={<Button onClick={onUploadRequest}>{copy.uploadImage}</Button>}
+            action={<Button variant="light" onClick={onUploadRequest}>{copy.uploadImage}</Button>}
           />
         </div>
       )}

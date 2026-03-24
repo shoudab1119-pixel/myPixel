@@ -13,10 +13,9 @@ import { EditorTopbar } from "@/components/editor/editor-topbar";
 import { PixelCanvas } from "@/components/editor/pixel-canvas";
 import { ProjectLibraryDialog } from "@/components/editor/project-library-dialog";
 import {
-  createPaletteMaps,
-  getInitialPresentColorKeys,
   getGridColorUsage,
-  remapExcludedColorKey,
+  removeNoiseFromGrid,
+  replaceColorKeyWithNeighborColors,
 } from "@/lib/editor/grid-colors";
 import { zoomViewportAtPoint } from "@/lib/editor/render";
 import { Panel } from "@/components/ui/panel";
@@ -85,6 +84,7 @@ export function EditorApp() {
   const latestPixelateRequestRef = useRef<string | null>(null);
   const [fitSignal, setFitSignal] = useState(0);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [editorView, setEditorView] = useState<"generate" | "edit">("generate");
   const { pixelate } = usePixelWorker();
 
   const {
@@ -108,7 +108,6 @@ export function EditorApp() {
     setProjectName,
     setTargetSize,
     setPalettePresetId,
-    setExcludedColorKeys,
     setSelectedColor,
     setSelectedTool,
     setRenderMode,
@@ -143,7 +142,6 @@ export function EditorApp() {
       setProjectName: state.setProjectName,
       setTargetSize: state.setTargetSize,
       setPalettePresetId: state.setPalettePresetId,
-      setExcludedColorKeys: state.setExcludedColorKeys,
       setSelectedColor: state.setSelectedColor,
       setSelectedTool: state.setSelectedTool,
       setRenderMode: state.setRenderMode,
@@ -300,6 +298,7 @@ export function EditorApp() {
 
         loadSnapshot(record.snapshot);
         lastLoadedProjectRef.current = id;
+        setEditorView("generate");
         setFitSignal((value) => value + 1);
         router.replace(`/editor?project=${id}`);
         setProcessing({
@@ -353,6 +352,7 @@ export function EditorApp() {
       });
 
       const raster = await rasterizeFile(file);
+      setEditorView("generate");
       await processRaster(raster.asset, raster.pixels, targetSize, {
         projectId: sourceImage ? projectId : null,
         projectName: resolveProjectNameForSourceChange(
@@ -524,6 +524,59 @@ export function EditorApp() {
     }
   }, [copy, grid, palette, projectName, setProcessing]);
 
+  const handleRemoveNoise = useCallback(() => {
+    if (!grid) {
+      return;
+    }
+
+    const result = removeNoiseFromGrid(grid, palette);
+    if (result.changedCount === 0) {
+      setProcessing({
+        status: copy.noiseAlreadyClean,
+        error: null,
+      });
+      return;
+    }
+
+    useEditorStore.getState().applyCellsWithHistory(result.grid.cells);
+    setProcessing({
+      status: copy.noiseRemoved(result.changedCount),
+      error: null,
+    });
+  }, [copy, grid, palette, setProcessing]);
+
+  const handleDeleteColorKey = useCallback(
+    (colorKey: string) => {
+      if (!grid) {
+        return;
+      }
+
+      const result = replaceColorKeyWithNeighborColors(grid, palette, colorKey);
+      if (!result) {
+        setProcessing({
+          error: copy.cannotDeleteLastColor,
+          status: null,
+        });
+        return;
+      }
+
+      if (result.changedCount === 0) {
+        setProcessing({
+          error: null,
+          status: copy.colorAlreadyGone(colorKey),
+        });
+        return;
+      }
+
+      useEditorStore.getState().applyCellsWithHistory(result.grid.cells);
+      setProcessing({
+        error: null,
+        status: copy.deletedColor(colorKey, result.changedCount),
+      });
+    },
+    [copy, grid, palette, setProcessing],
+  );
+
   const handleFitView = useCallback(() => {
     setFitSignal((value) => value + 1);
   }, []);
@@ -573,114 +626,21 @@ export function EditorApp() {
       return [];
     }
 
-    const { byKey } = createPaletteMaps(palette);
-    const usage = getGridColorUsage(grid, palette);
-
-    return getInitialPresentColorKeys(grid)
-      .map((key) => {
-        const color = byKey.get(key);
-        const currentUsage = usage.get(key);
-
-        if (!color) {
-          return null;
-        }
-
-        return {
-          key,
-          hex: color.hex,
-          name: color.name,
-          count: currentUsage?.count ?? 0,
-          excluded: excludedColorKeys.includes(key),
-        };
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    return [...getGridColorUsage(grid, palette).values()]
+      .map((entry) => ({
+        key: entry.color.code ?? entry.color.name,
+        hex: entry.color.hex,
+        name: entry.color.name,
+        count: entry.count,
+      }))
       .sort((left, right) => {
-        if (right.count !== left.count) {
-          return right.count - left.count;
+        if (left.count !== right.count) {
+          return left.count - right.count;
         }
 
         return left.key.localeCompare(right.key);
       });
-  }, [excludedColorKeys, grid, palette]);
-
-  const handleToggleExcludedColorKey = useCallback(
-    async (colorKey: string) => {
-      if (!grid) {
-        return;
-      }
-
-      const nextExcludedColorKeys = excludedColorKeys.includes(colorKey)
-        ? excludedColorKeys.filter((key) => key !== colorKey)
-        : [...excludedColorKeys, colorKey];
-
-      if (excludedColorKeys.includes(colorKey)) {
-        setExcludedColorKeys(nextExcludedColorKeys);
-        await handleRegenerate(targetSize, palettePresetId, nextExcludedColorKeys);
-        return;
-      }
-
-      const remappedGrid = remapExcludedColorKey(
-        grid,
-        palette,
-        colorKey,
-        nextExcludedColorKeys,
-      );
-
-      if (!remappedGrid) {
-        setProcessing({
-          error: copy.cannotExcludeLastColor,
-          status: null,
-        });
-        return;
-      }
-
-      const { byKey } = createPaletteMaps(palette);
-      const fallbackColor = remappedGrid.cellKeys
-        .map((key) => byKey.get(key))
-        .find((color) => Boolean(color));
-
-      setExcludedColorKeys(nextExcludedColorKeys);
-      initializeProject({
-        grid: remappedGrid,
-        originalGrid: remappedGrid,
-        palettePresetId,
-        sourceImage,
-        palette,
-        targetSize,
-        excludedColorKeys: nextExcludedColorKeys,
-        viewport,
-        projectId,
-        projectName,
-        dirty: true,
-      });
-
-      if (fallbackColor) {
-        setSelectedColor(fallbackColor.hex);
-      }
-
-      setProcessing({
-        error: null,
-        status: copy.excludedColor(colorKey),
-      });
-    },
-    [
-      copy,
-      excludedColorKeys,
-      grid,
-      handleRegenerate,
-      initializeProject,
-      palette,
-      palettePresetId,
-      projectId,
-      projectName,
-      setExcludedColorKeys,
-      setProcessing,
-      setSelectedColor,
-      sourceImage,
-      targetSize,
-      viewport,
-    ],
-  );
+  }, [grid, palette]);
 
   const toolLabel = messages.editor.toolbar[selectedTool];
 
@@ -697,7 +657,7 @@ export function EditorApp() {
         }}
       />
 
-      <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-4 px-4 py-4 xl:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-4 bg-[#f3efe7] px-4 py-4 xl:px-6">
         <EditorTopbar
           projectName={projectName}
           hasSourceImage={Boolean(sourceImage)}
@@ -729,6 +689,7 @@ export function EditorApp() {
             selectedTool={selectedTool}
             canUndo={history.past.length > 0}
             canRedo={history.future.length > 0}
+            editingEnabled={editorView === "edit"}
             onSelectTool={setSelectedTool}
             onUndo={undo}
             onRedo={redo}
@@ -738,6 +699,7 @@ export function EditorApp() {
             <PixelCanvas
               fitSignal={fitSignal}
               isPixelating={processing.isPixelating}
+              editingEnabled={editorView === "edit"}
               onUploadRequest={openFilePicker}
             />
             <CanvasControls
@@ -745,7 +707,7 @@ export function EditorApp() {
               onZoomChange={handleZoomChange}
               onFit={handleFitView}
             />
-            <Panel className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-mist-50/58">
+            <Panel className="flex flex-wrap items-center justify-between gap-3 border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-soft">
               <p>{summary}</p>
               <div className="flex items-center gap-3">
                 <span>
@@ -760,18 +722,20 @@ export function EditorApp() {
 
           <div className="pr-1">
             <EditorSidebar
+              editorView={editorView}
               grid={grid}
               sourceImage={sourceImage}
               targetSize={targetSize}
               palettePresetId={palettePresetId}
               selectedColor={selectedColor}
               palette={palette}
-              excludedColorKeys={excludedColorKeys}
               usedPaletteEntries={usedPaletteEntries}
               showGrid={viewport.showGrid}
               isPixelating={processing.isPixelating || processing.isLoadingProject}
+              onEditorViewChange={setEditorView}
               onUpload={openFilePicker}
               onRegenerate={() => void handleRegenerate()}
+              onRemoveNoise={handleRemoveNoise}
               onSelectPreset={(preset) => {
                 setTargetSize(preset);
                 if (sourceImage) {
@@ -789,9 +753,7 @@ export function EditorApp() {
                 }
               }}
               onSelectColor={setSelectedColor}
-              onToggleExcludedColorKey={(colorKey) => {
-                void handleToggleExcludedColorKey(colorKey);
-              }}
+              onDeleteColorKey={handleDeleteColorKey}
               onToggleGrid={() => setViewport({ showGrid: !viewport.showGrid })}
             />
           </div>

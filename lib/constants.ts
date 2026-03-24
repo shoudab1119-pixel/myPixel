@@ -9,7 +9,7 @@ export const GRID_PRESETS: GridSizeOption[] = [
 
 export const DEFAULT_GRID_PRESET = GRID_PRESETS[1];
 export const DEFAULT_PROJECT_NAME = "Untitled Pattern";
-export const DEFAULT_CANVAS_BACKGROUND = "#0f1723";
+export const DEFAULT_CANVAS_BACKGROUND = "#f7f4ed";
 export const DEFAULT_EMPTY_CELL = "#f7f2e7";
 export const EXTERNAL_BACKGROUND_FILL = "#E5E7EB";
 export const HISTORY_LIMIT = 40;

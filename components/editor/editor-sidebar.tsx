@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Grid2x2Check, ImagePlus, RefreshCw } from "lucide-react";
+import {
+  ExternalLink,
+  Grid2x2Check,
+  ImagePlus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 import { useLocale } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
@@ -17,51 +24,56 @@ import type {
   SourceImageAsset,
 } from "@/types/editor";
 
+export type EditorView = "generate" | "edit";
+
 interface UsedPaletteEntry {
   key: string;
   hex: string;
   name: string;
   count: number;
-  excluded: boolean;
 }
 
 interface EditorSidebarProps {
+  editorView: EditorView;
   grid: PixelGrid | null;
   sourceImage: SourceImageAsset | null;
   targetSize: GridSizeOption;
   palettePresetId: PalettePresetId;
   selectedColor: string;
   palette: PaletteColor[];
-  excludedColorKeys: string[];
   usedPaletteEntries: UsedPaletteEntry[];
   showGrid: boolean;
   isPixelating: boolean;
+  onEditorViewChange: (view: EditorView) => void;
   onUpload: () => void;
   onRegenerate: () => void;
+  onRemoveNoise: () => void;
   onSelectPreset: (preset: GridSizeOption) => void;
   onSelectPalettePreset: (palettePresetId: PalettePresetId) => void;
   onSelectColor: (color: string) => void;
-  onToggleExcludedColorKey: (colorKey: string) => void;
+  onDeleteColorKey: (colorKey: string) => void;
   onToggleGrid: () => void;
 }
 
 export function EditorSidebar({
+  editorView,
   grid,
   sourceImage,
   targetSize,
   palettePresetId,
   selectedColor,
   palette,
-  excludedColorKeys,
   usedPaletteEntries,
   showGrid,
   isPixelating,
+  onEditorViewChange,
   onUpload,
   onRegenerate,
+  onRemoveNoise,
   onSelectPreset,
   onSelectPalettePreset,
   onSelectColor,
-  onToggleExcludedColorKey,
+  onDeleteColorKey,
   onToggleGrid,
 }: EditorSidebarProps) {
   const { messages } = useLocale();
@@ -71,246 +83,300 @@ export function EditorSidebar({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Panel className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-mist-50/40">
-              {copy.sourceEyebrow}
-            </p>
-            <h3 className="mt-2 font-display text-xl font-semibold text-mist-50">
-              {copy.sourceTitle}
-            </h3>
-          </div>
-          <Grid2x2Check className="h-5 w-5 text-ember-400" />
-        </div>
-
-        <div className="mt-5 space-y-3 text-sm text-mist-50/64">
-          <div className="rounded-[22px] border border-white/8 bg-black/15 p-4">
-            {sourceImage ? (
-              <>
-                <p className="font-medium text-mist-50">{sourceImage.name}</p>
-                <p className="mt-2">{copy.original(sourceImage.width, sourceImage.height)}</p>
-                <p className="mt-1">
-                  {copy.currentGrid(
-                    grid?.width ?? targetSize.width,
-                    grid?.height ?? targetSize.height,
-                  )}
-                </p>
-              </>
-            ) : (
-              <p>{copy.noImage}</p>
-            )}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            <Button
-              variant="secondary"
-              onClick={onUpload}
-              icon={<ImagePlus className="h-4 w-4" />}
-            >
-              {sourceImage ? copy.replaceImage : copy.uploadImage}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={onRegenerate}
-              disabled={!sourceImage || isPixelating}
-              icon={<RefreshCw className="h-4 w-4" />}
-            >
-              {copy.regenerate}
-            </Button>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-mist-50/40">
-              {copy.gridEyebrow}
-            </p>
-            <h3 className="mt-2 font-display text-xl font-semibold text-mist-50">
-              {copy.gridTitle}
-            </h3>
-          </div>
+      <div className="flex justify-end">
+        <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
           <button
             type="button"
-            onClick={onToggleGrid}
+            onClick={() => onEditorViewChange("generate")}
             className={cn(
-              "rounded-full px-3 py-2 text-xs uppercase tracking-[0.16em] transition",
-              showGrid
-                ? "bg-mint-300/15 text-mint-300"
-                : "bg-white/[0.04] text-mist-50/42 hover:text-mist-50/62",
+              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
+              editorView === "generate"
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:text-slate-800",
             )}
           >
-            {copy.gridToggle(showGrid)}
+            {copy.generateTab}
+          </button>
+          <button
+            type="button"
+            onClick={() => onEditorViewChange("edit")}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition",
+              editorView === "edit"
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:text-slate-800",
+            )}
+          >
+            {copy.editTab}
           </button>
         </div>
+      </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          {GRID_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => onSelectPreset(preset)}
-              className={cn(
-                "rounded-2xl border px-3 py-3 text-left text-sm transition",
-                targetSize.id === preset.id
-                  ? "border-ember-400/40 bg-ember-500/10 text-mist-50"
-                  : "border-white/8 bg-white/[0.03] text-mist-50/65 hover:border-white/12 hover:text-mist-50",
-              )}
-            >
-              <p className="font-medium">{preset.label}</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/30">
-                {copy.presetSuffix}
-              </p>
-            </button>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel className="min-h-0 p-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-mist-50/40">
-            {copy.paletteEyebrow}
-          </p>
-          <h3 className="mt-2 font-display text-xl font-semibold text-mist-50">
-            {copy.paletteTitle}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-mist-50/62">
-            {grid ? copy.paletteReady : copy.paletteInactive}
-          </p>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          {PALETTE_PRESET_OPTIONS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => onSelectPalettePreset(preset.id)}
-              className={cn(
-                "rounded-2xl border px-3 py-3 text-left transition",
-                palettePresetId === preset.id
-                  ? "border-mint-300/40 bg-mint-300/12 text-mist-50"
-                  : "border-white/8 bg-white/[0.03] text-mist-50/65 hover:border-white/12 hover:text-mist-50",
-              )}
-            >
-              <p className="text-sm font-medium">{preset.name}</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-white/38">
-                {copy.palettePresetMeta(
-                  preset.colorCount,
-                  preset.id === "mard-221" ? copy.palettePresetBase : copy.palettePresetFull,
-                )}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 space-y-3">
-          <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-mist-50/35">
-              {copy.currentColor}
-            </p>
-            {selectedPaletteColor ? (
-              <div className="mt-3 flex items-center gap-4">
-                <div
-                  className="h-14 w-14 rounded-2xl border border-black/10"
-                  style={{ backgroundColor: selectedPaletteColor.hex }}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-mist-50">
-                    {selectedPaletteColor.code ?? selectedPaletteColor.name}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-mist-50/40">
-                    {selectedPaletteColor.hex}
-                  </p>
-                  <p className="mt-1 text-xs text-mist-50/55">{selectedPaletteColor.name}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-mist-50/55">{copy.noColorSelected}</p>
-            )}
-          </div>
-
-          <label className="block">
-            <span className="text-xs uppercase tracking-[0.16em] text-mist-50/35">
-              {copy.quickSelect}
-            </span>
-            <select
-              value={selectedColor}
-              onChange={(event) => onSelectColor(event.target.value)}
-              className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/15 px-4 text-sm text-mist-50 outline-none transition focus:border-mint-300/40"
-            >
-              {palette.map((color) => (
-                <option key={color.id} value={color.hex} className="bg-ink-950 text-mist-50">
-                  {(color.code ?? color.name) + " · " + color.hex}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <Link
-            href="/palette"
-            target="_blank"
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-mist-50 transition hover:bg-white/[0.06]"
-          >
-            <ExternalLink className="h-4 w-4" />
-            {copy.openPalettePage}
-          </Link>
-
-          <div className="rounded-[22px] border border-white/8 bg-black/15 p-4">
-            <div className="flex items-center justify-between gap-3">
+      {editorView === "generate" ? (
+        <>
+          <Panel className="border-slate-200 bg-white p-5 shadow-soft">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-mist-50/35">
-                  {copy.filterEyebrow}
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {copy.sourceEyebrow}
                 </p>
-                <p className="mt-2 text-sm font-medium text-mist-50">
-                  {copy.filterTitle}
-                </p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">
+                  {copy.sourceTitle}
+                </h3>
               </div>
-              {excludedColorKeys.length > 0 ? (
-                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-mist-50/52">
-                  {copy.filterExcludedCount(excludedColorKeys.length)}
+              <Grid2x2Check className="h-5 w-5 text-amber-500" />
+            </div>
+
+            <div className="mt-5 space-y-3 text-sm text-slate-500">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                {sourceImage ? (
+                  <>
+                    <p className="font-medium text-slate-900">{sourceImage.name}</p>
+                    <p className="mt-2">{copy.original(sourceImage.width, sourceImage.height)}</p>
+                    <p className="mt-1">
+                      {copy.currentGrid(
+                        grid?.width ?? targetSize.width,
+                        grid?.height ?? targetSize.height,
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <p>{copy.noImage}</p>
+                )}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                <Button
+                  variant="light"
+                  onClick={onUpload}
+                  icon={<ImagePlus className="h-4 w-4" />}
+                >
+                  {sourceImage ? copy.replaceImage : copy.uploadImage}
+                </Button>
+                <Button
+                  variant="light"
+                  onClick={onRegenerate}
+                  disabled={!sourceImage || isPixelating}
+                  icon={<RefreshCw className="h-4 w-4" />}
+                >
+                  {copy.regenerate}
+                </Button>
+                <Button
+                  variant="light"
+                  onClick={onRemoveNoise}
+                  disabled={!grid || isPixelating}
+                  icon={<Sparkles className="h-4 w-4" />}
+                  className="sm:col-span-2 xl:col-span-1"
+                >
+                  {copy.removeNoise}
+                </Button>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel className="border-slate-200 bg-white p-5 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {copy.gridEyebrow}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">
+                  {copy.gridTitle}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={onToggleGrid}
+                className={cn(
+                  "rounded-full px-3 py-2 text-xs uppercase tracking-[0.16em] transition",
+                  showGrid
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-slate-100 text-slate-500 hover:text-slate-700",
+                )}
+              >
+                {copy.gridToggle(showGrid)}
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {GRID_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => onSelectPreset(preset)}
+                  className={cn(
+                    "rounded-2xl border px-3 py-3 text-left text-sm transition",
+                    targetSize.id === preset.id
+                      ? "border-amber-300 bg-amber-50 text-slate-900"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900",
+                  )}
+                >
+                  <p className="font-medium">{preset.label}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                    {copy.presetSuffix}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel className="border-slate-200 bg-white p-5 shadow-soft">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                {copy.paletteEyebrow}
+              </p>
+              <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">
+                {copy.paletteTitle}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-500">
+                {grid ? copy.paletteReady : copy.paletteInactive}
+              </p>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {PALETTE_PRESET_OPTIONS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => onSelectPalettePreset(preset.id)}
+                  className={cn(
+                    "rounded-2xl border px-3 py-3 text-left transition",
+                    palettePresetId === preset.id
+                      ? "border-emerald-300 bg-emerald-50 text-slate-900"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900",
+                  )}
+                >
+                  <p className="text-sm font-medium">{preset.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-400">
+                    {copy.palettePresetMeta(
+                      preset.colorCount,
+                      preset.id === "mard-221" ? copy.palettePresetBase : copy.palettePresetFull,
+                    )}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </Panel>
+        </>
+      ) : (
+        <>
+          <Panel className="border-slate-200 bg-white p-5 shadow-soft">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {copy.editEyebrow}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">
+                  {copy.editTitle}
+                </h3>
+              </div>
+              <Link
+                href="/palette"
+                target="_blank"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {copy.openPalettePage}
+              </Link>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                  {copy.currentColor}
+                </p>
+                {selectedPaletteColor ? (
+                  <div className="mt-3 flex items-center gap-4">
+                    <div
+                      className="h-14 w-14 rounded-2xl border border-slate-200"
+                      style={{ backgroundColor: selectedPaletteColor.hex }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900">
+                        {selectedPaletteColor.code ?? selectedPaletteColor.name}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-400">
+                        {selectedPaletteColor.hex}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">{selectedPaletteColor.name}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">{copy.noColorSelected}</p>
+                )}
+              </div>
+
+              <label className="block">
+                <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                  {copy.quickSelect}
                 </span>
-              ) : null}
+                <select
+                  value={selectedColor}
+                  onChange={(event) => onSelectColor(event.target.value)}
+                  className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-300"
+                >
+                  {palette.map((color) => (
+                    <option key={color.id} value={color.hex}>
+                      {(color.code ?? color.name) + " · " + color.hex}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </Panel>
+
+          <Panel className="min-h-0 border-slate-200 bg-white p-5 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+                  {copy.statsEyebrow}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-slate-900">
+                  {copy.statsTitle}
+                </h3>
+              </div>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                {copy.statsOrder}
+              </span>
             </div>
 
             {usedPaletteEntries.length > 0 ? (
-              <div className="mt-4 grid max-h-56 grid-cols-2 gap-2 overflow-auto pr-1">
+              <div className="mt-4 grid max-h-[28rem] gap-2 overflow-auto pr-1">
                 {usedPaletteEntries.map((entry) => (
-                  <button
+                  <div
                     key={entry.key}
-                    type="button"
-                    onClick={() => onToggleExcludedColorKey(entry.key)}
-                    disabled={isPixelating}
-                    className={cn(
-                      "rounded-2xl border px-3 py-3 text-left transition",
-                      entry.excluded
-                        ? "border-rose-400/30 bg-rose-500/10 text-mist-50/45"
-                        : "border-white/8 bg-white/[0.03] text-mist-50/72 hover:border-white/12 hover:text-mist-50",
-                    )}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="h-5 w-5 rounded-full border border-black/10"
-                        style={{ backgroundColor: entry.hex }}
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold uppercase tracking-[0.14em]">
-                          {entry.key}
-                        </p>
-                        <p className="mt-1 text-[11px] text-mist-50/45">
-                          {copy.filterUsage(entry.count)}
-                        </p>
-                      </div>
+                    <span
+                      className="h-6 w-6 rounded-full border border-slate-200"
+                      style={{ backgroundColor: entry.hex }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {entry.key}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {entry.hex} · {copy.statsUsage(entry.count)}
+                      </p>
                     </div>
-                  </button>
+                    <Button
+                      variant="light"
+                      size="sm"
+                      onClick={() => onDeleteColorKey(entry.key)}
+                      disabled={isPixelating || usedPaletteEntries.length <= 1}
+                      icon={<Trash2 className="h-4 w-4" />}
+                      className="shrink-0"
+                    >
+                      {copy.deleteColor}
+                    </Button>
+                  </div>
                 ))}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-mist-50/52">{copy.filterEmpty}</p>
+              <p className="mt-4 text-sm text-slate-500">{copy.statsEmpty}</p>
             )}
-          </div>
-        </div>
-      </Panel>
+          </Panel>
+        </>
+      )}
     </div>
   );
 }

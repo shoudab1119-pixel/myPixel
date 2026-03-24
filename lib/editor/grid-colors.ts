@@ -5,6 +5,11 @@ interface GridColorOptions {
   excludeExternal?: boolean;
 }
 
+interface NeighborReplacementResult {
+  grid: PixelGrid;
+  changedCount: number;
+}
+
 function getPaletteKey(color: PaletteColor) {
   return color.code ?? color.name;
 }
@@ -170,6 +175,232 @@ export function replaceGridCellsWithPalette(
     cells: nextCells,
     cellKeys,
     externalMask,
+  };
+}
+
+function createNextGrid(
+  grid: PixelGrid,
+  nextCells: string[],
+  nextCellKeys: string[],
+) {
+  return {
+    ...grid,
+    cells: nextCells,
+    cellKeys: nextCellKeys,
+  };
+}
+
+function getNeighborIndices(index: number, width: number, height: number) {
+  const x = index % width;
+  const y = Math.floor(index / width);
+  const neighbors: number[] = [];
+
+  for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+      if (offsetX === 0 && offsetY === 0) {
+        continue;
+      }
+
+      const nextX = x + offsetX;
+      const nextY = y + offsetY;
+
+      if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) {
+        continue;
+      }
+
+      neighbors.push(nextY * width + nextX);
+    }
+  }
+
+  return neighbors;
+}
+
+function getDominantNeighborKey(
+  grid: PixelGrid,
+  index: number,
+  excludedKeys: Set<string>,
+) {
+  const counts = new Map<string, number>();
+
+  for (const neighborIndex of getNeighborIndices(index, grid.width, grid.height)) {
+    if (grid.externalMask[neighborIndex]) {
+      continue;
+    }
+
+    const neighborKey = grid.cellKeys[neighborIndex];
+    if (!neighborKey || excludedKeys.has(neighborKey)) {
+      continue;
+    }
+
+    counts.set(neighborKey, (counts.get(neighborKey) ?? 0) + 1);
+  }
+
+  let winner: string | null = null;
+  let winnerCount = 0;
+
+  for (const [key, count] of counts.entries()) {
+    if (count > winnerCount) {
+      winner = key;
+      winnerCount = count;
+    }
+  }
+
+  return {
+    key: winner,
+    count: winnerCount,
+  };
+}
+
+function getFallbackPaletteWinner(
+  palette: PaletteColor[],
+  currentHex: string,
+  excludedKeys: Set<string>,
+) {
+  const candidates = palette.filter((color) => !excludedKeys.has(getPaletteKey(color)));
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const currentRgb = hexToRgb(currentHex);
+  let winner = candidates[0];
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const score = colorDistance(currentRgb, candidate.rgb);
+    if (score < bestScore) {
+      bestScore = score;
+      winner = candidate;
+    }
+  }
+
+  return winner;
+}
+
+export function removeNoiseFromGrid(
+  grid: PixelGrid,
+  palette: PaletteColor[],
+): NeighborReplacementResult {
+  const { byKey } = createPaletteMaps(palette);
+  let nextGrid = {
+    ...grid,
+    cells: [...grid.cells],
+    cellKeys: [...grid.cellKeys],
+  };
+  let changedCount = 0;
+
+  for (let pass = 0; pass < 2; pass += 1) {
+    const passCells = [...nextGrid.cells];
+    const passKeys = [...nextGrid.cellKeys];
+
+    for (let index = 0; index < nextGrid.cells.length; index += 1) {
+      if (nextGrid.externalMask[index]) {
+        continue;
+      }
+
+      const currentKey = nextGrid.cellKeys[index];
+      const neighbor = getDominantNeighborKey(nextGrid, index, new Set([currentKey]));
+      if (!neighbor.key || neighbor.count < 5) {
+        continue;
+      }
+
+      const selfSupport = getNeighborIndices(index, nextGrid.width, nextGrid.height).filter(
+        (neighborIndex) =>
+          !nextGrid.externalMask[neighborIndex] &&
+          nextGrid.cellKeys[neighborIndex] === currentKey,
+      ).length;
+
+      if (selfSupport >= 2) {
+        continue;
+      }
+
+      const winner = byKey.get(neighbor.key);
+      if (!winner) {
+        continue;
+      }
+
+      if (passKeys[index] !== neighbor.key) {
+        passKeys[index] = neighbor.key;
+        passCells[index] = winner.hex;
+        changedCount += 1;
+      }
+    }
+
+    nextGrid = createNextGrid(nextGrid, passCells, passKeys);
+  }
+
+  return {
+    grid: nextGrid,
+    changedCount,
+  };
+}
+
+export function replaceColorKeyWithNeighborColors(
+  grid: PixelGrid,
+  palette: PaletteColor[],
+  targetColorKey: string,
+): NeighborReplacementResult | null {
+  const { byKey } = createPaletteMaps(palette);
+  const currentPresentKeys = getPresentColorKeys(grid).filter((key) => key !== targetColorKey);
+
+  if (currentPresentKeys.length === 0) {
+    return null;
+  }
+
+  let nextGrid = {
+    ...grid,
+    cells: [...grid.cells],
+    cellKeys: [...grid.cellKeys],
+  };
+  let changedCount = 0;
+  let remainingTarget = nextGrid.cellKeys.some(
+    (key, index) => !nextGrid.externalMask[index] && key === targetColorKey,
+  );
+
+  while (remainingTarget) {
+    let passChanged = false;
+    const passCells = [...nextGrid.cells];
+    const passKeys = [...nextGrid.cellKeys];
+
+    for (let index = 0; index < nextGrid.cells.length; index += 1) {
+      if (nextGrid.externalMask[index] || nextGrid.cellKeys[index] !== targetColorKey) {
+        continue;
+      }
+
+      const neighbor = getDominantNeighborKey(nextGrid, index, new Set([targetColorKey]));
+      let winner = neighbor.key ? byKey.get(neighbor.key) ?? null : null;
+
+      if (!winner) {
+        winner = getFallbackPaletteWinner(
+          palette,
+          nextGrid.cells[index],
+          new Set([targetColorKey]),
+        );
+      }
+
+      if (!winner) {
+        continue;
+      }
+
+      passChanged = true;
+      changedCount += 1;
+      passKeys[index] = getPaletteKey(winner);
+      passCells[index] = winner.hex;
+    }
+
+    nextGrid = createNextGrid(nextGrid, passCells, passKeys);
+
+    if (!passChanged) {
+      break;
+    }
+
+    remainingTarget = nextGrid.cellKeys.some(
+      (key, index) => !nextGrid.externalMask[index] && key === targetColorKey,
+    );
+  }
+
+  return {
+    grid: nextGrid,
+    changedCount,
   };
 }
 
