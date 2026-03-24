@@ -1,5 +1,9 @@
 import { getReadableTextColor } from "@/lib/color";
-import { EXTERNAL_BACKGROUND_FILL } from "@/lib/constants";
+import {
+  EXTERNAL_BACKGROUND_FILL,
+  GRID_GUIDE_INTERVAL,
+  LARGE_GRID_GUIDE_THRESHOLD,
+} from "@/lib/constants";
 import { getGridColorUsage, getGridDisplayFill } from "@/lib/editor/grid-colors";
 import { clamp } from "@/lib/utils";
 import type { GridRenderMode, PaletteColor, PixelGrid } from "@/types/editor";
@@ -28,25 +32,31 @@ function drawGridLines(
   context: CanvasRenderingContext2D,
   grid: PixelGrid,
   cellSize: number,
+  interval: number,
   strokeStyle: string,
+  lineWidth = 1,
 ) {
   context.strokeStyle = strokeStyle;
-  context.lineWidth = 1;
+  context.lineWidth = lineWidth;
   context.beginPath();
 
-  for (let x = 0; x <= grid.width; x += 1) {
+  for (let x = 0; x <= grid.width; x += interval) {
     const drawX = x * cellSize;
     context.moveTo(drawX, 0);
     context.lineTo(drawX, grid.height * cellSize);
   }
 
-  for (let y = 0; y <= grid.height; y += 1) {
+  for (let y = 0; y <= grid.height; y += interval) {
     const drawY = y * cellSize;
     context.moveTo(0, drawY);
     context.lineTo(grid.width * cellSize, drawY);
   }
 
   context.stroke();
+}
+
+function shouldShowCoordinateGuides(grid: PixelGrid) {
+  return Math.max(grid.width, grid.height) >= LARGE_GRID_GUIDE_THRESHOLD;
 }
 
 function drawGrid(grid: PixelGrid, options: GridExportOptions = {}) {
@@ -72,7 +82,7 @@ function drawGrid(grid: PixelGrid, options: GridExportOptions = {}) {
   }
 
   if (renderMode === "coded" && options.palette?.length) {
-    drawGridLines(context, grid, cellSize, "rgba(15, 23, 35, 0.22)");
+    drawGridLines(context, grid, cellSize, 1, "rgba(15, 23, 35, 0.2)");
 
     const fontSize = Math.max(10, Math.min(18, Math.floor(cellSize * 0.34)));
     context.textAlign = "center";
@@ -109,6 +119,17 @@ function drawGrid(grid: PixelGrid, options: GridExportOptions = {}) {
     context.strokeStyle = "rgba(15, 23, 35, 0.35)";
     context.lineWidth = 1.5;
     context.strokeRect(0, 0, canvas.width, canvas.height);
+  }
+
+  if (shouldShowCoordinateGuides(grid)) {
+    drawGridLines(
+      context,
+      grid,
+      cellSize,
+      GRID_GUIDE_INTERVAL,
+      "rgba(15, 23, 35, 0.4)",
+      cellSize >= 24 ? 1.75 : 1.25,
+    );
   }
 
   return canvas;

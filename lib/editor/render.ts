@@ -2,6 +2,8 @@ import {
   BASE_CANVAS_CELL_SIZE,
   EXTERNAL_BACKGROUND_FILL,
   DEFAULT_CANVAS_BACKGROUND,
+  GRID_GUIDE_INTERVAL,
+  LARGE_GRID_GUIDE_THRESHOLD,
   MAX_ZOOM,
   MIN_ZOOM,
 } from "@/lib/constants";
@@ -27,6 +29,42 @@ export interface CanvasRenderInput {
 
 export function getRenderedCellSize(zoom: number) {
   return BASE_CANVAS_CELL_SIZE * zoom;
+}
+
+function shouldShowCoordinateGuides(grid: PixelGrid) {
+  return Math.max(grid.width, grid.height) >= LARGE_GRID_GUIDE_THRESHOLD;
+}
+
+function drawGridLineSet(
+  context: CanvasRenderingContext2D,
+  grid: PixelGrid,
+  offsetX: number,
+  offsetY: number,
+  cellSize: number,
+  interval: number,
+  strokeStyle: string,
+  lineWidth: number,
+) {
+  const contentWidth = grid.width * cellSize;
+  const contentHeight = grid.height * cellSize;
+
+  context.strokeStyle = strokeStyle;
+  context.lineWidth = lineWidth;
+  context.beginPath();
+
+  for (let x = 0; x <= grid.width; x += interval) {
+    const drawX = offsetX + x * cellSize;
+    context.moveTo(drawX, offsetY);
+    context.lineTo(drawX, offsetY + contentHeight);
+  }
+
+  for (let y = 0; y <= grid.height; y += interval) {
+    const drawY = offsetY + y * cellSize;
+    context.moveTo(offsetX, drawY);
+    context.lineTo(offsetX + contentWidth, drawY);
+  }
+
+  context.stroke();
 }
 
 export function fitGridViewport(
@@ -195,24 +233,32 @@ export function renderPixelGrid({
     }
   }
 
-  if (viewport.showGrid && cellSize >= 8) {
-    context.strokeStyle = "rgba(6, 10, 16, 0.35)";
-    context.lineWidth = 1;
-    context.beginPath();
-
-    for (let x = 0; x <= grid.width; x += 1) {
-      const drawX = viewport.offsetX + x * cellSize;
-      context.moveTo(drawX, viewport.offsetY);
-      context.lineTo(drawX, viewport.offsetY + contentHeight);
+  if (viewport.showGrid) {
+    if (cellSize >= 8) {
+      drawGridLineSet(
+        context,
+        grid,
+        viewport.offsetX,
+        viewport.offsetY,
+        cellSize,
+        1,
+        "rgba(15, 23, 42, 0.14)",
+        1,
+      );
     }
 
-    for (let y = 0; y <= grid.height; y += 1) {
-      const drawY = viewport.offsetY + y * cellSize;
-      context.moveTo(viewport.offsetX, drawY);
-      context.lineTo(viewport.offsetX + contentWidth, drawY);
+    if (shouldShowCoordinateGuides(grid) && cellSize >= 4) {
+      drawGridLineSet(
+        context,
+        grid,
+        viewport.offsetX,
+        viewport.offsetY,
+        cellSize,
+        GRID_GUIDE_INTERVAL,
+        "rgba(15, 23, 42, 0.34)",
+        cellSize >= 10 ? 1.5 : 1,
+      );
     }
-
-    context.stroke();
   }
 
   context.strokeStyle = "rgba(255,255,255,0.16)";
