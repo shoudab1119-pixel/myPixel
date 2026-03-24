@@ -657,7 +657,7 @@ export function EditorApp() {
         }}
       />
 
-      <div className="mx-auto flex min-h-[calc(100vh-81px)] max-w-[1800px] flex-col gap-5 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-4 py-4 xl:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-none flex-col gap-4 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-3 py-3 xl:h-[calc(100vh-81px)] xl:overflow-hidden xl:px-5 xl:py-4">
         <EditorTopbar
           editorView={editorView}
           projectName={projectName}
@@ -686,8 +686,8 @@ export function EditorApp() {
           </Panel>
         ) : null}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
-          <div className="flex min-h-[640px] flex-col gap-4 xl:relative xl:min-h-[calc(100vh-190px)]">
+        <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch">
+          <div className="flex min-h-[640px] flex-col gap-4 xl:relative xl:min-h-0 xl:h-full">
             <div className="xl:hidden">
               <EditorToolbar
                 selectedTool={selectedTool}
@@ -700,7 +700,7 @@ export function EditorApp() {
               />
             </div>
 
-            <div className="hidden xl:absolute xl:left-6 xl:top-6 xl:z-10 xl:block xl:w-[92px]">
+            <div className="hidden xl:absolute xl:left-5 xl:top-5 xl:z-10 xl:block xl:w-[88px]">
               <EditorToolbar
                 selectedTool={selectedTool}
                 canUndo={history.past.length > 0}
@@ -712,7 +712,7 @@ export function EditorApp() {
               />
             </div>
 
-            <div className="h-[min(76vh,940px)] min-h-[560px] xl:h-full">
+            <div className="h-[min(76vh,940px)] min-h-[560px] xl:min-h-0 xl:flex-1 xl:h-full">
               <PixelCanvas
                 fitSignal={fitSignal}
                 isPixelating={processing.isPixelating}
@@ -743,7 +743,7 @@ export function EditorApp() {
               </Panel>
             </div>
 
-            <div className="hidden xl:absolute xl:right-6 xl:top-6 xl:z-10 xl:block xl:max-w-[320px]">
+            <div className="hidden xl:absolute xl:right-5 xl:top-5 xl:z-10 xl:block xl:max-w-[280px]">
               <Panel className="border-slate-200/80 bg-white/90 px-4 py-3 text-sm text-slate-600 shadow-soft backdrop-blur">
                 <p className="font-medium text-slate-900">{summary}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -757,7 +757,7 @@ export function EditorApp() {
               </Panel>
             </div>
 
-            <div className="hidden xl:absolute xl:bottom-6 xl:left-1/2 xl:z-10 xl:block xl:w-[min(460px,calc(100%-170px))] xl:-translate-x-1/2">
+            <div className="hidden xl:absolute xl:bottom-5 xl:left-1/2 xl:z-10 xl:block xl:w-[min(440px,calc(100%-160px))] xl:-translate-x-1/2">
               <CanvasControls
                 zoom={viewport.zoom}
                 onZoomChange={handleZoomChange}
@@ -766,7 +766,7 @@ export function EditorApp() {
             </div>
           </div>
 
-          <div className="pr-1 xl:sticky xl:top-[96px] xl:h-[calc(100vh-140px)]">
+          <div className="pr-1 xl:min-h-0 xl:h-full">
             <EditorSidebar
               editorView={editorView}
               grid={grid}
