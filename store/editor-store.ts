@@ -21,6 +21,7 @@ import {
   getPalettePreset,
   inferPalettePresetId,
 } from "@/lib/palette";
+import { createSafeId } from "@/lib/utils";
 import type {
   CanvasBounds,
   GridRenderMode,
@@ -299,7 +300,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     return {
       version: 3,
-      projectId: state.projectId ?? crypto.randomUUID(),
+      projectId: state.projectId ?? createSafeId(),
       projectName: state.projectName.trim() || DEFAULT_PROJECT_NAME,
       grid: cloneGrid(state.grid),
       originalGrid: cloneGrid(state.originalGrid),

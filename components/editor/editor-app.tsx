@@ -38,7 +38,7 @@ import {
   getProject,
   saveProjectRecord,
 } from "@/lib/storage/project-storage";
-import { downloadBlob } from "@/lib/utils";
+import { createSafeId, downloadBlob } from "@/lib/utils";
 import { useEditorStore } from "@/store/editor-store";
 import type {
   GridSizeOption,
@@ -196,7 +196,7 @@ export function EditorApp() {
         options?.palettePresetId ?? palettePresetId,
       );
       const nextPalette = options?.palette ?? nextPalettePreset.colors;
-      const requestId = crypto.randomUUID();
+      const requestId = createSafeId();
 
       try {
         latestPixelateRequestRef.current = requestId;
