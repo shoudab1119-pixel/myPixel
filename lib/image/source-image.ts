@@ -7,13 +7,55 @@ export interface RasterizedImageSource {
   pixels: Uint8ClampedArray;
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Unable to read the image file."));
-    reader.readAsDataURL(file);
+interface UploadSourceImageResponse {
+  url: string;
+  name: string;
+  type: string;
+}
+
+const IMAGE_UPLOAD_ENDPOINT = "/api/uploads/";
+const ACCEPTED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+]);
+
+export function resolveSourceImageSrc(asset: Pick<SourceImageAsset, "url" | "dataUrl">) {
+  const source = asset.url ?? asset.dataUrl;
+
+  if (!source) {
+    throw new Error("Unable to resolve the source image URL.");
+  }
+
+  return source;
+}
+
+async function uploadSourceImage(file: File): Promise<UploadSourceImageResponse> {
+  const normalizedType = file.type.toLowerCase();
+  if (normalizedType && !ACCEPTED_IMAGE_TYPES.has(normalizedType)) {
+    throw new Error("Unsupported image format. Please upload PNG, JPG, or WEBP.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(IMAGE_UPLOAD_ENDPOINT, {
+    method: "POST",
+    body: formData,
   });
+  const payload = (await response.json().catch(() => null)) as
+    | (UploadSourceImageResponse & { error?: string })
+    | { error?: string }
+    | null;
+
+  if (!response.ok || !payload || !("url" in payload)) {
+    throw new Error(
+      payload?.error ?? "Unable to upload the image to the server.",
+    );
+  }
+
+  return payload;
 }
 
 function loadImage(src: string) {
@@ -47,7 +89,9 @@ async function rasterizeSource(
     asset: {
       name,
       type,
-      dataUrl: src,
+      ...(src.startsWith("data:")
+        ? { dataUrl: src }
+        : { url: src }),
       width: canvas.width,
       height: canvas.height,
     },
@@ -56,10 +100,10 @@ async function rasterizeSource(
 }
 
 export async function rasterizeFile(file: File) {
-  const dataUrl = await readFileAsDataUrl(file);
-  return rasterizeSource(dataUrl, file.name, file.type || "image/png");
+  const uploaded = await uploadSourceImage(file);
+  return rasterizeSource(uploaded.url, uploaded.name, uploaded.type || "image/png");
 }
 
 export async function rasterizeAsset(asset: SourceImageAsset) {
-  return rasterizeSource(asset.dataUrl, asset.name, asset.type);
+  return rasterizeSource(resolveSourceImageSrc(asset), asset.name, asset.type);
 }

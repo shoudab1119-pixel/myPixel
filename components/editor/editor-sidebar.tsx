@@ -14,6 +14,7 @@ import { useLocale } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { getGridPresetLongEdge, resolveAspectRatioGridSize } from "@/lib/editor/grid-size";
+import { resolveSourceImageSrc } from "@/lib/image/source-image";
 import { GRID_PRESETS } from "@/lib/constants";
 import { PALETTE_PRESET_OPTIONS } from "@/lib/palette";
 import { cn } from "@/lib/utils";
@@ -120,7 +121,12 @@ export function EditorSidebar({
               <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
                 {sourceImage ? (
                   <>
-                    <p className="font-medium text-slate-900">{sourceImage.name}</p>
+                    <img
+                      src={resolveSourceImageSrc(sourceImage)}
+                      alt={sourceImage.name}
+                      className="aspect-[4/3] w-full rounded-2xl border border-slate-200 object-cover"
+                    />
+                    <p className="mt-3 font-medium text-slate-900">{sourceImage.name}</p>
                     <p className="mt-2">{copy.original(sourceImage.width, sourceImage.height)}</p>
                     <p className="mt-1">
                       {copy.currentGrid(

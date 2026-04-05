@@ -49,7 +49,8 @@ export interface PixelGrid {
 export interface SourceImageAsset {
   name: string;
   type: string;
-  dataUrl: string;
+  url?: string;
+  dataUrl?: string;
   width: number;
   height: number;
 }

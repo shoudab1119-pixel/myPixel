@@ -23,6 +23,7 @@ The focus is not only on the conversion result, but on a usable editing workflow
 - Zustand for editor state
 - HTML5 Canvas for grid rendering and editing
 - Web Worker for pixelation and color quantization
+- Next.js Route Handler for image uploads
 - IndexedDB with localStorage fallback for project persistence
 
 ## Features
@@ -31,6 +32,7 @@ The focus is not only on the conversion result, but on a usable editing workflow
 - Full editor at `/editor`
 - Local project library at `/projects`
 - Real image raster processing and palette mapping
+- Server-backed source image upload with public URLs
 - Grid presets: 32x32, 48x48, 64x64, 96x96
 - Undo / redo history
 - Canvas zoom and pan
@@ -184,39 +186,7 @@ If the repository already exists locally, skip `git init`.
 
 ## Deploy Online
 
-### Vercel
-
-This project is ready to deploy on Vercel with zero framework changes.
-
-```bash
-npm i -g vercel
-vercel
-vercel --prod
-```
-
-Or connect the GitHub repository in the Vercel dashboard:
-
-1. Import the GitHub repository
-2. Framework preset: `Next.js`
-3. Build command: `npm run build`
-4. Output setting: default Next.js output
-5. Click deploy
-
-### GitHub Pages
-
-This repository also includes an automated GitHub Pages workflow.
-
-- Repository URL: `https://github.com/shoudab1119-pixel/myPixel`
-- Expected site URL: `https://shoudab1119-pixel.github.io/myPixel/`
-- Workflow file: `.github/workflows/deploy-pages.yml`
-
-GitHub Pages build notes:
-
-- `next.config.ts` switches to static export when `GITHUB_PAGES=true`
-- `basePath` and `assetPrefix` are set to `/myPixel`
-- Every push to `main` triggers a fresh static deployment
-
-### Self-host
+### Self-host with persistent storage
 
 ```bash
 npm install
@@ -225,6 +195,15 @@ npm run start
 ```
 
 Then expose port `3000` through Nginx, Caddy, or a cloud load balancer.
+
+Upload notes:
+
+- The upload API writes source images to `public/uploads`
+- The server process must have write permission to that directory
+- The host filesystem must persist across restarts and deployments
+
+Static hosts such as GitHub Pages cannot support this upload flow.
+Serverless platforms with ephemeral local filesystems also need an external blob/object store instead of the built-in upload route.
 
 ## Verified
 
@@ -245,6 +224,7 @@ The project has been checked with:
 
 ## Notes
 
-- Projects are stored in the browser, not on a server.
-- Large source images are decoded client-side before worker processing.
+- Project snapshots are still stored in the browser for reopen/edit flows.
+- Uploaded source images are stored on the server under `public/uploads` and referenced by public URL paths.
+- Large source images are decoded client-side after upload before worker processing.
 - The MVP currently uses a single default palette, but the palette model is extensible.

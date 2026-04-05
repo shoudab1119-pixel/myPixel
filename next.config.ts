@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-const isGithubPages = process.env.GITHUB_PAGES === "true";
-const repositoryName = "myPixel";
 const allowedDevOrigins = Array.from(
   new Set(
     [
@@ -18,10 +16,6 @@ const allowedDevOrigins = Array.from(
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   allowedDevOrigins,
-  output: isGithubPages ? "export" : undefined,
-  trailingSlash: isGithubPages,
-  basePath: isGithubPages ? `/${repositoryName}` : undefined,
-  assetPrefix: isGithubPages ? `/${repositoryName}/` : undefined,
 };
 
 export default nextConfig;
