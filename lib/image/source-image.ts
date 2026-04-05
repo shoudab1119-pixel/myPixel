@@ -13,7 +13,7 @@ interface UploadSourceImageResponse {
   type: string;
 }
 
-const IMAGE_UPLOAD_ENDPOINT = "/api/uploads/";
+const IMAGE_UPLOAD_ENDPOINT = "/api/uploads";
 const ACCEPTED_IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
